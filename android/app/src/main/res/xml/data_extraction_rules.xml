@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 and above read the backup and device-transfer policy from here; Android 11 and below
+  read the same excludes from `full_backup_content.xml` — the two files are kept in sync.
+
+  Everything the app owns goes along, but for the exclude below: the system backup brings the
+  history back after a lost or replaced phone without the user ever having exported it. Whether a
+  finance app should leave this on is an open product question (TODO.md, «Рассмотреть»).
+
+  The secret of `@capacitor-community/sqlite` is encrypted with an AndroidKeyStore key, and those
+  keys never leave the device. Restoring the file without its key leaves the plugin unable to read
+  its own preferences: it fails to initialize, every call answers `CapacitorSQLitePlugin: null`, and
+  the app dies on `createConnection` with the database error screen — with the restored database
+  intact next to it. Left out, the plugin simply writes a new one on the first start. Found in
+  My Lovely Car on a device: an auto-restore after a reinstall reproduced exactly that.
+
+  `disableIfNoEncryptionCapabilities`: the data leaves the device only when the platform can
+  encrypt the backup with the screen lock of the user. Device transfer goes straight to the new
+  phone of the same user and is not stored by a third party.
+-->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="sqlite_encrypted_shared_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="sqlite_encrypted_shared_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

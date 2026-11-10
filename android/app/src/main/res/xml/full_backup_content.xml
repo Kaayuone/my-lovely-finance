@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!--
+      The secret of `@capacitor-community/sqlite` is encrypted with an AndroidKeyStore key, and
+      those keys never leave the device. Restoring the file without its key leaves the plugin
+      unable to read its own preferences and the app dies on `createConnection` with the database
+      error screen. Left out, the plugin simply writes a new one on the first start. Kept in sync
+      with data_extraction_rules.xml, which explains the policy.
+    -->
+    <exclude domain="sharedpref" path="sqlite_encrypted_shared_prefs.xml" />
+</full-backup-content>

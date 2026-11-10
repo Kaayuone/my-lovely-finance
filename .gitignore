@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+.DS_Store
+dist
+dist-ssr
+coverage
+playwright-report
+test-results
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+*.tsbuildinfo
+
+# Local output of manual test runs
+/output/
+
+.eslintcache
+
+# Vitest
+__screenshots__/
+
+# Capacitor native projects (android/, ios/) are committed to git so releases
+# are reproducible; per-platform build artifacts are excluded by each project's
+# own .gitignore (android/.gitignore, and ios/App/.gitignore once iOS is added).
+
+# Signing keystores must never be committed (the Android template leaves these
+# commented out, so guard them here explicitly):
+*.keystore
+*.jks
+android/keystore.properties
+
+# Environment files: secrets never enter the repository (AGENTS.md, Code rules)
+.env
+.env.*
+!.env.example

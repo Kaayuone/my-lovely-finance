@@ -1,0 +1,41 @@
+/* Only the faces the app renders are declared here: Tailwind utilities and the PrimeVue theme ask
+   for 400, 500, 600 and 700, and nothing renders italics. The unused faces were dropped from the
+   repository — take a new file from the Lato distribution to ship one. Only woff2 is shipped: the
+   product is an Android app, and every WebView from min SDK 24 upwards reads that format, so a woff
+   fallback would add weight nothing loads. */
+@font-face {
+  font-family: 'Lato';
+  src:
+    local('Lato Regular'),
+    local('Lato-Regular'),
+    url('latoregular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Lato';
+  src:
+    local('Lato Medium'),
+    local('Lato-Medium'),
+    url('latomedium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Lato';
+  src:
+    local('Lato Semibold'),
+    local('Lato-Semibold'),
+    url('latosemibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Lato';
+  src:
+    local('Lato Bold'),
+    local('Lato-Bold'),
+    url('latobold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}

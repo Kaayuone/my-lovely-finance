@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Lovely Finance</title>
+    <meta
+      name="description"
+      content="Учёт личных финансов: траты по карте записываются сами из уведомлений банка, наличные — в два касания. Данные хранятся локально на устройстве."
+    />
+    <meta name="theme-color" content="#059669" />
+    <style>
+      /* Дублирует --app-bg из main.css: surface-100 (светлая) и surface-950 (тёмная) */
+      html,
+      body,
+      #app {
+        background-color: #f1f5f9;
+      }
+
+      html.dark-mode,
+      html.dark-mode body,
+      html.dark-mode #app {
+        background-color: #09090b;
+      }
+    </style>
+    <script>
+      // Тёмная тема — дефолт; зеркало настройки в localStorage читается синхронно,
+      // до того как main.ts дождётся Preferences, иначе первый кадр моргает чужим фоном
+      try {
+        if (localStorage.getItem('themeDarkMode') !== 'false') {
+          document.documentElement.classList.add('dark-mode');
+        }
+      } catch {
+        document.documentElement.classList.add('dark-mode');
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

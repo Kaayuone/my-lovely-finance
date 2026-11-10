@@ -1,0 +1,230 @@
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+
+@theme {
+  --breakpoint-w360: 22.5rem; /* 360px */
+  --breakpoint-w400: 25rem; /* 400px */
+  --breakpoint-w600: 37.5rem; /* 600px */
+  --breakpoint-w720: 45rem; /* 720px, 10" tablets */
+  --container-column: 40rem; /* 640px, the tablet content column */
+  --text-2xs: 0.625rem; /* 10px */
+  --text-2xs--line-height: 0.875rem; /* 14px */
+}
+
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+
+/* Aura keeps `surface-*` pointing the same way in both colour schemes (surface-950 stays near-black
+   in light mode), so the background levels of the app are switched here instead of in components */
+@theme inline {
+  --color-app: var(--app-bg);
+  --color-card: var(--app-bg-card);
+  --color-line: var(--app-border);
+  /* Aura already switches the form-field tokens per colour scheme, so these need no light/dark pair */
+  --color-field: var(--p-form-field-background);
+  --color-field-disabled: var(--p-form-field-disabled-background);
+  --color-field-line: var(--p-form-field-border-color);
+  /* The invalid border colour is too light to read as text, so a message takes the placeholder one */
+  --color-invalid: var(--p-form-field-invalid-placeholder-color);
+}
+
+:root {
+  --app-bg: var(--p-surface-100);
+  --app-bg-card: var(--p-surface-0);
+  --app-border: var(--p-surface-200);
+  /* Accent text on the light page: primary.500 reads under 4.5:1 against it */
+  --app-primary-text: var(--p-primary-700);
+  --float-label-surface-background: var(--app-bg);
+  /* Must match THEME_TRANSITION_DURATION_MS in services/theme/constants.ts */
+  --theme-transition-duration: 250ms;
+  /* From the screen edge to the tablet content column, 0 on a phone. `100vw` is exact: WebView
+     scrollbars overlay the content and take no width */
+  --column-gutter: max(0px, calc((100vw - var(--container-column)) / 2));
+}
+
+/* The tablet content column. Scroll containers, bars and full-screen sheets stay as wide as the
+   screen, so a swipe on the margin still scrolls; their content is inset by the gutter plus the phone
+   padding, which leaves the phone layout as it was */
+@utility px-column-* {
+  padding-inline: calc(var(--column-gutter) + var(--spacing) * --value(integer));
+}
+
+@utility left-column-* {
+  left: calc(var(--column-gutter) + var(--spacing) * --value(integer));
+}
+
+@utility right-column-* {
+  right: calc(var(--column-gutter) + var(--spacing) * --value(integer));
+}
+
+.dark-mode {
+  --app-bg: var(--p-surface-950);
+  --app-bg-card: var(--p-surface-900);
+  --app-border: var(--p-surface-700);
+  --app-primary-text: var(--p-primary-color);
+}
+
+/* `text-primary` of tailwindcss-primeui is the accent itself, the colour a button is filled with. On
+   the light page small text in that shade is too faint, so text takes a darker step of the accent
+   there, while fills, borders and PrimeVue components keep the accent as it is. A plain rule in the
+   utilities layer, later in the source than the generated one: `@utility text-primary` does not
+   replace a utility the plugin's theme already produces */
+@layer utilities {
+  .text-primary {
+    color: var(--app-primary-text);
+  }
+}
+
+/* Switching `.dark-mode` repaints every surface at once. PrimeVue components carry a colour
+   transition of their own, so the page, card and text surfaces of the app are the ones that jump;
+   `applyDarkMode` puts this class on `<html>` for the length of the switch and fades them with it.
+   The class is deliberately not permanent, because colours that must change instantly (a highlighted
+   row while the list scrolls) would start fading too. Unlayered on purpose: it has to win over the
+   `primevue` and Tailwind `utilities` layers.
+
+   Listed are the app's own colour roles plus the PrimeVue parts that have no transition of their own
+   and are on screen while the theme is switched (the bottom bar). A new surface fades only if it
+   carries one of these utilities, otherwise it is added here. Deliberately not `*`: matching every
+   element made the switch pay for the whole tree. */
+html.theme-transition,
+html.theme-transition body,
+html.theme-transition #app,
+html.theme-transition
+  :is(
+    .bg-app,
+    .bg-card,
+    .bg-field,
+    .bg-field-disabled,
+    .bg-line,
+    .bg-highlight,
+    .bg-primary,
+    .bg-primary-contrast,
+    .border-line,
+    .border-field-line,
+    .border-invalid,
+    .border-primary,
+    .text-color,
+    .text-muted-color,
+    .text-line,
+    .text-invalid,
+    .text-primary,
+    .text-primary-contrast,
+    .p-tablist,
+    .p-tablist-tab-list
+  ) {
+  transition-property: background-color, border-color, color;
+  transition-duration: var(--theme-transition-duration);
+  transition-timing-function: ease;
+  transition-delay: 0s;
+}
+
+/* Zeroing the duration instead of repeating the selector list; the class is still added and
+   removed, so the switch itself keeps working */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --theme-transition-duration: 0s;
+  }
+}
+
+.bg-app {
+  --float-label-surface-background: var(--app-bg);
+}
+
+.bg-card {
+  --float-label-surface-background: var(--app-bg-card);
+}
+
+/* An active float label straddles the input border. Its top half masks the border with the nearest
+   app or card surface, while the bottom half follows the field state. Every FloatLabel must live
+   inside a surface such as `.bg-app` or `.bg-card` that sets `--float-label-surface-background`. */
+.p-floatlabel-on {
+  --float-label-field-background: var(--p-form-field-background);
+  --p-floatlabel-on-active-background: var(--float-label-surface-background);
+}
+
+/* A disabled Select holds no disabled form element: PrimeVue marks its root `.p-disabled` instead */
+.p-floatlabel-on:has(:disabled, .p-disabled) {
+  --float-label-field-background: var(--p-form-field-disabled-background);
+}
+
+.p-floatlabel-on:has(
+    input:focus,
+    input.p-filled,
+    input:-webkit-autofill,
+    textarea:focus,
+    textarea.p-filled,
+    .p-inputwrapper-focus,
+    .p-inputwrapper-filled,
+    input[placeholder],
+    textarea[placeholder]
+  )
+  label {
+  isolation: isolate;
+  overflow: hidden;
+
+  &::before {
+    position: absolute;
+    z-index: -1;
+    inset-block: calc(50% + 1px) 0;
+    inset-inline: 0;
+    background-color: var(--float-label-field-background);
+    transition: background-color var(--p-floatlabel-transition-duration);
+    content: '';
+  }
+}
+
+html,
+body {
+  background-color: var(--app-bg);
+}
+
+/* A 10" tablet is read from further away than a phone, so it shows the same interface 25% larger.
+   Sizes are in rem and follow the root font; media queries keep reading rem as the initial 16px, so
+   the tiers stay where they are */
+html {
+  @variant w720 {
+    font-size: 125%;
+  }
+}
+
+/* Lucide sizes an icon with px attributes, which the root font does not move. Restated in rem the
+   icons scale with the rest of the interface, while a size class such as `size-5` still wins over
+   the base layer. A new `:size` value needs its line here */
+@layer base {
+  svg.lucide[width='16'] {
+    width: 1rem;
+    height: 1rem;
+  }
+  svg.lucide[width='20'] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  svg.lucide[width='24'] {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+* {
+  font-family: 'Lato', Arial, Helvetica, sans-serif;
+}
+
+body {
+  @apply text-sm;
+
+  @variant w400 {
+    @apply text-base;
+  }
+}
+
+/* PrimeVue hardcodes `font-size: 1rem` on form fields and buttons with no design token to
+   override, so narrow screens need a global rule. The `sm`/`lg` size variants resolve their
+   own tokens and are left alone. */
+@variant max-w360 {
+  .p-inputtext:not(.p-inputtext-sm, .p-inputtext-lg),
+  .p-textarea:not(.p-textarea-sm, .p-textarea-lg),
+  .p-button:not(.p-button-sm, .p-button-lg),
+  .p-togglebutton:not(.p-togglebutton-sm, .p-togglebutton-lg),
+  .p-select:not(.p-select-sm, .p-select-lg) .p-select-label {
+    font-size: 0.875rem;
+  }
+}

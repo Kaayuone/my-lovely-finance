@@ -1,0 +1,22 @@
+// Names of the Aura primitive palettes, so a ramp can be built from token references
+export type AccentColor =
+  | 'red'
+  | 'orange'
+  | 'amber'
+  | 'yellow'
+  | 'lime'
+  | 'green'
+  | 'emerald'
+  | 'teal'
+  | 'cyan'
+  | 'sky'
+  | 'blue'
+  | 'indigo'
+  | 'violet'
+  | 'purple'
+  | 'fuchsia'
+  | 'pink'
+  | 'rose'
+  | 'slate'
+  | 'gray'
+  | 'zinc';
