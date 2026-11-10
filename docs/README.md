@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 10 ноября 2026 — состав `docs/` и строки «Перед задачей» против документов каркаса 0.1.0
+> **Сверен:** 10 ноября 2026 — состав `docs/` и строки «Перед задачей» против документов каркаса 0.1.0 и захвата уведомлений
 >
 > **Пересмотр:** при добавлении, переносе или закрытии любого документа в `docs/`
 
@@ -17,7 +17,8 @@
 | --- | --- |
 | Любая правка в приложении | [`AGENTS.md`](../AGENTS.md), [`project-context.md`](architecture/project-context.md) |
 | Что строим и что не входит в MVP, монетизация, рынки | [`product/mvp.md`](product/mvp.md) |
-| Захват уведомлений банков, разбор, шаблоны, политики Play | [`product/bank-notifications.md`](product/bank-notifications.md) |
+| Захват уведомлений банков, разбор, шаблоны, политики Play | [`product/bank-notifications.md`](product/bank-notifications.md), [`architecture/notification-capture.md`](architecture/notification-capture.md) |
+| Проверка захвата на телефоне | [`testing/capture-device-checklist.md`](testing/capture-device-checklist.md) |
 | Схема БД, миграция, транзакции, репозиторий | [`data-layer.md`](architecture/data-layer.md), [`workflows/migrations.md`](workflows/migrations.md), [`conventions/entities-and-sqlite.md`](conventions/entities-and-sqlite.md) |
 | Стор | [`conventions/stores.md`](conventions/stores.md) |
 | `.vue`-компонент, вёрстка, тема | [`conventions/vue-components.md`](conventions/vue-components.md), [`conventions/styles-and-layout.md`](conventions/styles-and-layout.md) |

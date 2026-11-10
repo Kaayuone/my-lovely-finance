@@ -16,7 +16,7 @@
 | Инициализация БД, транзакции | [`data-layer.md`](../architecture/data-layer.md) |
 | Экран, вкладка нижнего меню, оболочка, тема | [`project-context.md`](../architecture/project-context.md) |
 | Android-манифест, Gradle, `capacitor.config.ts`, нативный плагин | [`project-context.md`](../architecture/project-context.md) «Android-конфигурация» |
-| Захват уведомлений, разбор, шаблоны банков | [`product/bank-notifications.md`](../product/bank-notifications.md); устройство кода — новый документ в `architecture/` |
+| Захват уведомлений, разбор, шаблоны банков | [`product/bank-notifications.md`](../product/bank-notifications.md), [`notification-capture.md`](../architecture/notification-capture.md), [`capture-device-checklist.md`](../testing/capture-device-checklist.md) |
 | Объём MVP, монетизация, рынки | [`product/mvp.md`](../product/mvp.md) |
 | Модуль, перенесённый из My Lovely Car | строка таблицы «Что из My Lovely Car ещё не перенесено» в [`project-context.md`](../architecture/project-context.md) |
 | Инвариант, который нельзя вывести из кода | Профильный документ модуля; если это выбор из нескольких вариантов — ADR |

@@ -1,9 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import TheAccounts from '@/pages/accounts/TheAccounts.vue';
+import TheCapture from '@/pages/capture/TheCapture.vue';
+import TheCaptureApps from '@/pages/capture/TheCaptureApps.vue';
 import TheInbox from '@/pages/inbox/TheInbox.vue';
 import DefaultLayout from '@/pages/layouts/DefaultLayout.vue';
 import TheOperations from '@/pages/operations/TheOperations.vue';
 import TheSettings from '@/pages/settings/TheSettings.vue';
+
+import { CAPTURE_FEATURE_TITLE } from '@/constants/capture';
 
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -11,6 +15,10 @@ declare module 'vue-router' {
   interface RouteMeta {
     // Page title rendered by DefaultHeader
     title?: string;
+    // The bottom-bar tab a nested page belongs to; a top-level page is its own tab
+    tab?: string;
+    // The page the back button of the header leads to when there is no history entry to go back to
+    backTo?: string;
   }
 }
 
@@ -42,6 +50,18 @@ const routes: RouteRecordRaw[] = [
         name: 'settings',
         component: TheSettings,
         meta: { title: 'Настройки' },
+      },
+      {
+        path: '/settings/capture',
+        name: 'capture',
+        component: TheCapture,
+        meta: { title: CAPTURE_FEATURE_TITLE, tab: 'settings', backTo: 'settings' },
+      },
+      {
+        path: '/settings/capture/apps',
+        name: 'capture-apps',
+        component: TheCaptureApps,
+        meta: { title: 'Приложения', tab: 'settings', backTo: 'capture' },
       },
     ],
   },

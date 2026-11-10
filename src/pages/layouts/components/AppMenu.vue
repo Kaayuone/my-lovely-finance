@@ -26,10 +26,11 @@ const NAV_MENU_ITEMS: NavMenuItem[] = [
 const route = useRoute();
 const router = useRouter();
 
-const activeTab = computed(() => route.name?.toString() ?? 'inbox');
+const activeTab = computed(() => route.meta.tab ?? route.name?.toString() ?? 'inbox');
 
+// A nested page highlights its tab, and a tap on that tab still leads to the top of it
 function onUpdateActiveTab(value: string | number) {
-  if (value === activeTab.value) return;
+  if (value === route.name) return;
 
   void router.push({ name: value.toString() });
 }

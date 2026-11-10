@@ -45,3 +45,24 @@ test('starts dark and keeps the light theme after a reload', async ({ page }) =>
   await expect(html).not.toHaveClass(/dark-mode/);
   await expect(page.getByLabel('Тёмная тема')).not.toBeChecked();
 });
+
+test('opens push capture from the settings and comes back with the header button', async ({
+  page,
+}) => {
+  await page.goto('/settings');
+
+  await page.getByRole('link', { name: /Сбор пушей/ }).click();
+  await expect(page).toHaveURL('/settings/capture');
+  await expect(page.getByRole('heading', { level: 1, name: 'Сбор пушей' })).toBeVisible();
+  // The web build has no notification listener to show
+  await expect(page.getByText('Только на Android')).toBeVisible();
+  // A nested page keeps the tab it belongs to
+  await expect(page.getByRole('tab', { name: 'Настройки' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+
+  await page.getByRole('button', { name: 'Назад' }).click();
+  await expect(page).toHaveURL('/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Настройки' })).toBeVisible();
+});

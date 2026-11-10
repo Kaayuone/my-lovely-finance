@@ -30,6 +30,18 @@
 
         </activity>
 
+        <!-- Notification capture (ADR-0003). The system binds it once the person switches on
+             notification access for the app; not exported, the system binds it regardless -->
+        <service
+            android:name=".CaptureListenerService"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -40,6 +52,15 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
+
+    <!-- The list of apps to capture from shows the ones with a launcher icon. Android 11+ hides other
+         packages without this entry; it is narrower than QUERY_ALL_PACKAGES, which Play reviews -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <!-- Permissions -->
 

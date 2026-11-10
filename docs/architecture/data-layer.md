@@ -2,9 +2,9 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 10 ноября 2026 — `src/database/` (`database.ts`, `transaction.ts`, `migrations/`), `services/startup`, тестовый харнесс `sqliteTestDatabase.ts`; схема БД 0
+> **Сверен:** 10 ноября 2026 — `src/database/` (`database.ts`, `transaction.ts`, `migrations/`), `services/startup`, тестовый харнесс `sqliteTestDatabase.ts`; схема БД 0; очередь захвата `CaptureDatabase.java`
 >
-> **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; когда нативная сторона начнёт писать в хранилище
+> **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; когда очередь захвата начнут переносить в основную базу
 
 Одна база SQLite `my_lovely_finance_db` (`src/database/config.ts`): на Android —
 `@capacitor-community/sqlite`, в вебе — `jeep-sqlite` поверх `sql.js` с хранилищем в IndexedDB.
@@ -16,6 +16,12 @@
 
 Таблиц предметной области пока нет. Есть только `schema_version` — одна строка с номером последнего
 применённого шага миграции.
+
+Вне этой базы — очередь захвата уведомлений `capture.db`: её пишет нативная служба, пока WebView нет,
+схема живёт в Java, миграции приложения её не касаются
+([ADR-0003](../adr/0003-captured-notifications-go-to-a-native-queue-the-app-takes-them-from.md),
+[`notification-capture.md`](notification-capture.md)). Писатель основной базы остаётся один —
+приложение.
 
 ## Где что лежит
 
