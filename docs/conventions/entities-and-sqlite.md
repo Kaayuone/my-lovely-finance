@@ -2,9 +2,9 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 10 ноября 2026 — `src/database/`: `database.ts`, `transaction.ts`, `bootstrap.ts`, `config.ts`, `migrations/` и `__tests__/sqliteTestDatabase.ts`; раздел о сущностях перенесён из My Lovely Car, `src/entities/` ещё нет
+> **Сверен:** 12 ноября 2026 — сущности `account`, `accountCard`, `category`, `operation`, общие `entities/types.ts` и `update-builder.ts`, API `@/database`, миграция v1 и харнесс `sqliteTestDatabase.ts`; схема БД 1
 >
-> **Пересмотр:** с первой сущностью в `src/entities/`; при изменении контракта репозиториев, мапперов, `database.ts`, очереди транзакций или runner'а миграций
+> **Пересмотр:** при изменении контракта репозиториев, мапперов, `database.ts`, очереди транзакций или runner'а миграций
 
 Правила кода сущностей `src/entities/` и доступа к SQLite `src/database/`. Как слой устроен —
 [`data-layer.md`](../architecture/data-layer.md), миграции —
@@ -14,29 +14,21 @@
 
 ## Слой данных (entities)
 
-Сущностей пока нет: правила раздела действуют с первой из них, имена в примерах — иллюстрация.
+Реализованы `account`, `accountCard`, `category` и `operation`. Инварианты модели и граница между
+защитой в БД и репозитории — в [`data-layer.md`](../architecture/data-layer.md#модель).
 
 Каждая сущность лежит в `src/entities/<name>/` и состоит ровно из трёх файлов:
 `<name>.types.ts`, `<name>.mapper.ts`, `<name>.repository.ts`.
 
-**Типы (`*.types.ts`)** — для каждой сущности 4 типа. `*Row` — форма строки в БД (snake_case),
-доменные типы — camelCase. `Audit` (`created_at`, `updated_at`) подмешивается из `../types`
-(`src/entities/types.ts` переносится из My Lovely Car с первой сущностью).
+**Типы (`*.types.ts`)** — обычно 4 типа: `NewXRow`, `XRow extends NewXRow, Audit`, `NewX`, `X`.
+`*Row` — форма строки в БД (snake_case), доменные типы — camelCase, булевы поля в домене —
+`boolean`. `Audit` (`created_at`, `updated_at`) и `DistributiveOmit` перенесены из My Lovely Car
+в `src/entities/types.ts` без полей синхронизации. У `accountCard` аудит — только
+`Pick<Audit, 'created_at'>`; у категории три типа: `NewCategoryRow`, `CategoryRow`, `Category`.
+Доменного `NewCategory` нет: создавать можно только подкатегорию, через `insertSubcategory`.
 
-```typescript
-export interface NewOperationRow {
-  account_id: number;
-  note: string /* snake_case */;
-}
-export interface OperationRow extends NewOperationRow, Audit {
-  id: number;
-}
-export type NewOperation = { accountId: number; note: string /* camelCase */ };
-export type Operation = NewOperation & { id: number };
-```
-
-Если у сущности есть тип-дискриминатор с несовместимыми наборами полей (колонка `type`, от которой
-зависит, какие поля заполнены), `New*` собирается из вариантов — по одному на значение
+Если у сущности есть тип-дискриминатор с несовместимыми наборами полей (например, `kind` операции,
+от которого зависит, какие поля заполнены), `New*` собирается из вариантов — по одному на значение
 дискриминатора, — и невозможные комбинации не выражаются в типе. Читаемый тип при этом остаётся
 плоским: строку из SQLite нельзя сузить до варианта без `as`, а потребители и так работают со всеми
 типами сразу. Для производных типов нужен `DistributiveOmit` из `entities/types.ts` — обычный `Omit`
@@ -53,21 +45,22 @@ export type Operation = NewOperation & { id: number };
 - SELECT-методы возвращают доменные типы через маппер: `(res ?? []).map(rowToOperation)`.
 - Все мутации идут внутри `runInTransaction` (он вызывает `updateOnWeb` сам). Одиночная запись —
   тоже транзакция: соединение держит одну транзакцию, и запись мимо очереди, пришедшая посреди
-  чужого сохранения, разрывает его.
+  чужого сохранения, разрывает его. Внутри каждый `executeSql` получает `transaction = false`.
 - `insert*` возвращает `result.changes?.lastId`; если `id` нет — `throw new Error('Failed to get the ID of the new record')` (сообщения об ошибках — на английском).
-- `update*` принимает `Partial<X>` и собирает `SET` через `buildUpdateAssignments` из
-  `@/entities/update-builder` только из `!== undefined` полей; если изменений нет (`null`) —
-  `return`. Модуль переносится из My Lovely Car (`src/entities/update-builder.ts`) с первым
-  `update*` — без опции `localUpdatedAt` и `localUpdatedAtNow()`: они штампуют время для
-  синхронизации.
+- Частичное обновление принимает `Partial<Pick<X, ...>>` только с разрешёнными полями и собирает
+  `SET` через `buildUpdateAssignments` из `@/entities/update-builder` только из `!== undefined`
+  полей; если изменений нет (`null`) — `return`. `src/entities/update-builder.ts` перенесён
+  из My Lovely Car без `localUpdatedAt`, `UpdateAssignmentsOptions` и `localUpdatedAtNow()`:
+  синхронизации здесь нет.
+- `updateOperation` принимает полный `NewOperation` и заменяет все поля строки: смена вида
+  обнуляет поля прежнего вида. Частичный UPDATE оставил бы несовместимые поля.
 
 ```typescript
-export async function getOperationsByAccountId(accountId: number): Promise<Operation[]> {
-  const res = await querySql<OperationRow>(
-    'SELECT * FROM operations WHERE account_id = ? ORDER BY created_at DESC',
-    [accountId],
+export async function getAccounts(): Promise<Account[]> {
+  const res = await querySql<AccountRow>(
+    'SELECT * FROM accounts ORDER BY is_archived, sort_order, id',
   );
-  return (res ?? []).map(rowToOperation);
+  return (res ?? []).map(rowToAccount);
 }
 ```
 

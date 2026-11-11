@@ -4,7 +4,8 @@ Personal finance tracker: card spending recorded from bank notifications, cash i
 
 Local-first Android-приложение для учёта личных финансов: Vue 3 + Capacitor + SQLite. Траты по
 карте записываются сами из уведомлений банка, наличные — вручную; данные остаются на телефоне.
-Сейчас это каркас 0.1.0 и захват уведомлений банков в журнал; учёта операций ещё нет.
+В версии 0.1.0 готовы захват уведомлений в журнал и модель данных (схема БД 1, сущности и сторы);
+разбора уведомлений и экранов учёта операций ещё нет.
 
 Правила разработки — [`AGENTS.md`](AGENTS.md), карта документации — [`docs/README.md`](docs/README.md),
 продукт и MVP — [`docs/product/mvp.md`](docs/product/mvp.md), задачи — [`TODO.md`](TODO.md).
