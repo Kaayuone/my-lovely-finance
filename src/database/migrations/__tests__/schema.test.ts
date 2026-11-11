@@ -10,6 +10,7 @@ type AccountRow = {
   name: string;
   type: string;
   currency: string;
+  opening_balance_minor?: number;
 };
 
 type CategoryRow = {
@@ -296,6 +297,31 @@ describe('operations reject', () => {
     await expect(
       executeSql('UPDATE operations SET fee_category_id = ? WHERE id = ?', [salaryId, id]),
     ).rejects.toThrow('fee category must be an expense category');
+  });
+});
+
+describe('money columns reject', () => {
+  it.each([
+    ['a positive transfer fee', () => transfer({ fee_minor: 150, fee_category_id: feesId })],
+    ['a fractional transfer fee', () => transfer({ fee_minor: -1.5, fee_category_id: feesId })],
+    ['a negative transfer credit', () => transfer({ to_amount_minor: -10000 })],
+    ['a fractional transfer credit', () => transfer({ to_amount_minor: 100.5 })],
+    [
+      'a fractional original amount',
+      () => expense({ original_amount_minor: -3.99, original_currency: 'USD' }),
+    ],
+    [
+      'a fractional opening balance',
+      () =>
+        insertAccount({
+          name: 'Вклад',
+          type: 'cash',
+          currency: 'BYN',
+          opening_balance_minor: 12.5,
+        }),
+    ],
+  ])('%s', async (_, insert) => {
+    await expect(insert()).rejects.toThrow();
   });
 });
 
