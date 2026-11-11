@@ -30,3 +30,7 @@
   репозитория мокает `@/database` функциями харнесса.
 - E2E — Playwright (`npm run test:e2e`), прогон идёт на production-сборке (`webServer` в
   `playwright.config.ts`).
+- Логика нативного кода без Android API (разбор строк, правила отбора) — JUnit-тесты в
+  `android/app/src/test/java/my/lovely/finance/`, запуск — `./gradlew testDebugUnitTest` в
+  `android/`, в CI — джоба `android`. Код, которому нужны Context, база или система, проверяет
+  устройство ([`capture-device-checklist.md`](../testing/capture-device-checklist.md)).

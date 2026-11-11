@@ -87,6 +87,6 @@ jobs:
       - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Assemble debug APK and run the JVM unit tests of the native code
+        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
         working-directory: android
