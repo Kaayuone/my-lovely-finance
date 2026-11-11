@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 10 ноября 2026 — `src/database/` (`database.ts`, `transaction.ts`, `migrations/`), `services/startup`, тестовый харнесс `sqliteTestDatabase.ts`; схема БД 0; очередь захвата `CaptureDatabase.java`
+> **Сверен:** 11 ноября 2026 — `src/database/` (`database.ts`, `transaction.ts`, `migrations/` с миграцией v1 в `definitions.ts`), `services/startup`, тестовый харнесс `sqliteTestDatabase.ts`; схема БД 1; очередь захвата `CaptureDatabase.java`
 >
 > **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; когда очередь захвата начнут переносить в основную базу
 

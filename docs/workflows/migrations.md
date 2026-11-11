@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 10 ноября 2026 — `src/database/migrations/` (`definitions.ts`, `runner.ts`), `runner.test.ts` и снимок `migrationSql.test.ts`; схема БД 0
+> **Сверен:** 11 ноября 2026 — `src/database/migrations/` (`definitions.ts` с миграцией v1, `runner.ts`), `runner.test.ts` и снимок `migrationSql.test.ts`; схема БД 1
 >
 > **Пересмотр:** при изменении раннера миграций или появлении бэкапа
 
