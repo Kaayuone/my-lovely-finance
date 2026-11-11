@@ -239,6 +239,7 @@ describe('operation repository', () => {
 
     await operationRepository.updateOperation(id, transferToUsd(3));
 
+    expect(updateOnWeb).toHaveBeenCalledTimes(3);
     expect((await readAll()).find(operation => operation.id === id)).toMatchObject({
       kind: 'transfer',
       toAccountId: usdId,
@@ -257,6 +258,7 @@ describe('operation repository', () => {
 
     await operationRepository.updateOperation(id, groceries(4));
 
+    expect(updateOnWeb).toHaveBeenCalledTimes(4);
     expect((await readAll()).find(operation => operation.id === id)).toMatchObject({
       kind: 'expense',
       amountMinor: -1250,
@@ -284,6 +286,7 @@ describe('operation repository', () => {
 
     await operationRepository.deleteOperation(id);
 
+    expect(updateOnWeb).toHaveBeenCalledTimes(3);
     expect((await readAll()).map(operation => operation.id)).toEqual([otherId]);
   });
 

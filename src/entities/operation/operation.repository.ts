@@ -75,8 +75,10 @@ export async function getOperationsPage(options: OperationsPageOptions): Promise
   const values: unknown[] = [];
 
   if (options.before) {
-    // Same as "earlier than the cursor, or at the same moment with a smaller id", but the leading
-    // `occurred_at <= ?` lets SQLite search a range of the index instead of scanning it
+    // Same as "earlier than the cursor, or at the same moment with a smaller id". Over all accounts
+    // the leading `occurred_at <= ?` makes it a range search on `operations_occurred_at`; with an
+    // account SQLite reads the rows of that account through its indexes, cuts them by the cursor and
+    // sorts the rest
     conditions.push('(occurred_at <= ? AND (occurred_at < ? OR id < ?))');
     values.push(options.before.occurredAt, options.before.occurredAt, options.before.id);
   }
