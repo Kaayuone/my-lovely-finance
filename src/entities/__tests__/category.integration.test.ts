@@ -166,6 +166,12 @@ describe('category repository with SQLite', () => {
       expect(await categoryById(groceriesId)).toMatchObject({ name: 'Продукты' });
     });
 
+    it('rejects renaming a category that does not exist', async () => {
+      await expect(categoryRepository.renameSubcategory(999_999, 'Кофе')).rejects.toThrow(
+        'Category not found',
+      );
+    });
+
     it('hides a built-in category and shows it again', async () => {
       await categoryRepository.setCategoryHidden(groceriesId, true);
       expect(await categoryById(groceriesId)).toMatchObject({ isHidden: true });
@@ -232,6 +238,34 @@ describe('category repository with SQLite', () => {
       });
       expect(await categoryById(coffeeId)).toBeUndefined();
       expect(updateOnWeb).toHaveBeenCalledTimes(1);
+    });
+
+    // A delete that fails after the move has run must take the move back with it
+    it('rolls the move back when the delete fails', async () => {
+      const coffeeId = await categoryRepository.insertSubcategory(foodId, 'Кофе');
+      const expenseId = await insertExpense(coffeeId);
+      const transferId = await insertTransferWithFee(coffeeId);
+      await executeSql(
+        `CREATE TRIGGER categories_delete_refused
+          BEFORE DELETE ON categories
+          FOR EACH ROW
+          BEGIN
+            SELECT RAISE(ABORT, 'category delete refused');
+          END`,
+      );
+
+      await expect(categoryRepository.deleteSubcategory(coffeeId)).rejects.toThrow(
+        'category delete refused',
+      );
+      expect(await operationCategories(expenseId)).toEqual({
+        category_id: coffeeId,
+        fee_category_id: null,
+      });
+      expect(await operationCategories(transferId)).toEqual({
+        category_id: null,
+        fee_category_id: coffeeId,
+      });
+      expect(await categoryById(coffeeId)).toBeDefined();
     });
 
     it('refuses to delete a built-in category and leaves its operations alone', async () => {
