@@ -4,11 +4,13 @@ import { ref } from 'vue';
 import {
   CAPTURE_JOURNAL_EVENTS_LIMIT,
   CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT,
+  CAPTURE_JOURNAL_SKIPPED_LIMIT,
   getCaptureSources,
   getCaptureStatus,
   getCapturedNotifications,
   getLaunchableApps,
   getListenerEvents,
+  getSkippedNotifications,
   isCaptureSupported,
   setCaptureSourceEnabled,
 } from '@/services/capture';
@@ -18,6 +20,7 @@ import type {
   CaptureStatus,
   CapturedNotification,
   ListenerEvent,
+  SkippedNotification,
 } from '@/services/capture';
 
 function sortByLabel(apps: CaptureApp[]): CaptureApp[] {
@@ -36,6 +39,7 @@ export const useCaptureStore = defineStore('capture', () => {
   const sources = ref<CaptureApp[]>([]);
   const apps = ref<CaptureApp[]>([]);
   const notifications = ref<CapturedNotification[]>([]);
+  const skippedNotifications = ref<SkippedNotification[]>([]);
   const listenerEvents = ref<ListenerEvent[]>([]);
 
   async function loadStatus() {
@@ -50,11 +54,13 @@ export const useCaptureStore = defineStore('capture', () => {
 
   async function loadJournal() {
     if (!supported) return;
-    const [loadedNotifications, loadedEvents] = await Promise.all([
+    const [loadedNotifications, loadedSkipped, loadedEvents] = await Promise.all([
       getCapturedNotifications(CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT),
+      getSkippedNotifications(CAPTURE_JOURNAL_SKIPPED_LIMIT),
       getListenerEvents(CAPTURE_JOURNAL_EVENTS_LIMIT),
     ]);
     notifications.value = loadedNotifications;
+    skippedNotifications.value = loadedSkipped;
     listenerEvents.value = loadedEvents;
   }
 
@@ -79,6 +85,7 @@ export const useCaptureStore = defineStore('capture', () => {
     sources,
     apps,
     notifications,
+    skippedNotifications,
     listenerEvents,
     loadStatus,
     loadSources,

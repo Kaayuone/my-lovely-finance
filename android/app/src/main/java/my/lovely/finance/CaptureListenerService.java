@@ -88,10 +88,11 @@ public class CaptureListenerService extends NotificationListenerService {
 
     @Override
     public void onDestroy() {
-        connected = false;
-        // Already queued writes still run
-        writer.shutdown();
+        // The base class reports the disconnect from here through onListenerDisconnected, which
+        // still needs the writer: it stops only after that. Already queued writes still run
         super.onDestroy();
+        connected = false;
+        writer.shutdown();
     }
 
     // An exception escaping a worker thread ends the whole process, so every write catches its own
@@ -139,6 +140,12 @@ public class CaptureListenerService extends NotificationListenerService {
         String subText = string(extras.getCharSequence(Notification.EXTRA_SUB_TEXT));
         String lines = lines(notification);
         if (title == null && text == null && bigText == null && lines == null) return false;
+        // A chosen SMS app or messenger also carries private conversations: only a notification
+        // that names an amount of money is kept (ADR-0004). Of the rest, the app and the time are
+        // counted, so a card operation the filter dropped shows up on the capture screen
+        if (!CaptureAmounts.containsAmount(title, text, bigText, subText, lines)) {
+            return db.insertSkippedNotification(packageName, sbn.getPostTime());
+        }
 
         ContentValues values = new ContentValues();
         values.put("package_name", packageName);

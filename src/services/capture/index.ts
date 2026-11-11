@@ -4,6 +4,7 @@ export {
   getCapturedNotifications,
   getLaunchableApps,
   getListenerEvents,
+  getSkippedNotifications,
   isCaptureSupported,
   openAppDetails,
   openCaptureAccessSettings,
@@ -18,5 +19,10 @@ export type {
   CapturedNotification,
   ListenerEvent,
   ListenerEventKind,
+  SkippedNotification,
 } from './capture.types';
-export { CAPTURE_JOURNAL_EVENTS_LIMIT, CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT } from './constants';
+export {
+  CAPTURE_JOURNAL_EVENTS_LIMIT,
+  CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT,
+  CAPTURE_JOURNAL_SKIPPED_LIMIT,
+} from './constants';

@@ -5,6 +5,7 @@ import type {
   CaptureStatus,
   CapturedNotification,
   ListenerEvent,
+  SkippedNotification,
 } from './capture.types';
 
 // Notifications of other apps are visible only to a native Android listener: the web build has none,
@@ -53,6 +54,11 @@ export async function setCaptureSourceEnabled(
 export async function getCapturedNotifications(limit: number): Promise<CapturedNotification[]> {
   const { notifications } = await Capture.getNotifications({ limit });
   return notifications;
+}
+
+export async function getSkippedNotifications(limit: number): Promise<SkippedNotification[]> {
+  const { skipped } = await Capture.getSkippedNotifications({ limit });
+  return skipped;
 }
 
 export async function getListenerEvents(limit: number): Promise<ListenerEvent[]> {

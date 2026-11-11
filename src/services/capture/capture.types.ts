@@ -12,6 +12,10 @@ export type CaptureStatus = {
 export type CaptureApp = {
   packageName: string;
   label: string;
+  // PNG data URL; null for an app removed since it was chosen
+  icon: string | null;
+  // The SMS app of the phone: among several SMS apps it is the one that gets the bank messages
+  isDefaultSms: boolean;
 };
 
 // `restored` — found in the shade when the listener connected: posted while nobody listened
@@ -30,6 +34,14 @@ export type CapturedNotification = {
   subText: string | null;
   // The newest message of a messenger notification, or the lines of an inbox-style one
   lines: string | null;
+};
+
+// A notification of a chosen app the amount filter dropped: the app and the time, never the text
+export type SkippedNotification = {
+  id: number;
+  packageName: string;
+  appLabel: string;
+  postedAt: number;
 };
 
 export type ListenerEventKind = 'connected' | 'disconnected' | 'rebind_requested';
@@ -52,6 +64,7 @@ export type CapturePluginApi = {
   getSources(): Promise<{ sources: CaptureApp[] }>;
   setSourceEnabled(options: { packageName: string; enabled: boolean }): Promise<void>;
   getNotifications(options: { limit: number }): Promise<{ notifications: CapturedNotification[] }>;
+  getSkippedNotifications(options: { limit: number }): Promise<{ skipped: SkippedNotification[] }>;
   getListenerEvents(options: { limit: number }): Promise<{ events: ListenerEvent[] }>;
   addListener(eventName: 'changed', listener: () => void): Promise<PluginListenerHandle>;
 };

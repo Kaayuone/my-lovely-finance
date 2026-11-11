@@ -31,7 +31,7 @@ final class CaptureDatabase extends SQLiteOpenHelper {
     static final String EVENT_REBIND_REQUESTED = "rebind_requested";
 
     private static final String NAME = "capture.db";
-    private static final int VERSION = 1;
+    private static final int VERSION = 3;
 
     private static CaptureDatabase instance;
 
@@ -70,11 +70,48 @@ final class CaptureDatabase extends SQLiteOpenHelper {
                 + "at INTEGER NOT NULL, "
                 + "uptime_ms INTEGER NOT NULL)"
         );
+        createSkippedNotifications(db);
     }
 
+    // One step per version, never edited once released. SQLiteOpenHelper runs them in a transaction
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Version 1 is the first one: the step to each later version goes here
+        if (oldVersion < 2) deleteNotificationsWithoutAmount(db);
+        if (oldVersion < 3) createSkippedNotifications(db);
+    }
+
+    // Version 3: notifications of a chosen app the amount filter dropped — the app and the time only,
+    // never the text, so a missing card operation can be told from a listener that was not running.
+    // The same notification found again in the shade is the same app and post time and counts once
+    private static void createSkippedNotifications(SQLiteDatabase db) {
+        db.execSQL(
+            "CREATE TABLE skipped_notifications ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "package_name TEXT NOT NULL, "
+                + "posted_at INTEGER NOT NULL, "
+                + "captured_at INTEGER NOT NULL, "
+                + "UNIQUE (package_name, posted_at))"
+        );
+    }
+
+    // Version 2 keeps only notifications that name an amount (ADR-0004): what version 1 captured
+    // from a chosen SMS app — private conversations among it — goes the same way
+    private static void deleteNotificationsWithoutAmount(SQLiteDatabase db) {
+        List<String> ids = new ArrayList<>();
+        String[] columns = new String[] { "id", "title", "text", "big_text", "sub_text", "lines" };
+        try (Cursor cursor = db.query("notifications", columns, null, null, null, null, null)) {
+            while (cursor.moveToNext()) {
+                boolean hasAmount = CaptureAmounts.containsAmount(
+                    cursor.getString(1),
+                    cursor.getString(2),
+                    cursor.getString(3),
+                    cursor.getString(4),
+                    cursor.getString(5)
+                );
+                if (!hasAmount) ids.add(cursor.getString(0));
+            }
+        }
+        for (String id : ids) db.delete("notifications", "id = ?", new String[] { id });
     }
 
     boolean isSource(String packageName) {
@@ -105,6 +142,15 @@ final class CaptureDatabase extends SQLiteOpenHelper {
         return getWritableDatabase().insertWithOnConflict("notifications", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1;
     }
 
+    // False when this notification was already counted
+    boolean insertSkippedNotification(String packageName, long postedAt) {
+        ContentValues values = new ContentValues();
+        values.put("package_name", packageName);
+        values.put("posted_at", postedAt);
+        values.put("captured_at", System.currentTimeMillis());
+        return getWritableDatabase().insertWithOnConflict("skipped_notifications", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1;
+    }
+
     void insertListenerEvent(String kind) {
         ContentValues values = new ContentValues();
         values.put("kind", kind);
@@ -119,6 +165,7 @@ final class CaptureDatabase extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         String[] args = new String[] { String.valueOf(time) };
         db.delete("notifications", "captured_at < ?", args);
+        db.delete("skipped_notifications", "captured_at < ?", args);
         db.delete("listener_events", "at < ?", args);
     }
 
@@ -126,6 +173,19 @@ final class CaptureDatabase extends SQLiteOpenHelper {
         return getReadableDatabase().query(
             "notifications",
             new String[] { "id", "package_name", "posted_at", "captured_at", "origin", "title", "text", "big_text", "sub_text", "lines" },
+            null,
+            null,
+            null,
+            null,
+            "id DESC",
+            String.valueOf(limit)
+        );
+    }
+
+    Cursor querySkippedNotifications(int limit) {
+        return getReadableDatabase().query(
+            "skipped_notifications",
+            new String[] { "id", "package_name", "posted_at" },
             null,
             null,
             null,

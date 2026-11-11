@@ -2,3 +2,4 @@
 // listener through a restart of the phone, small enough for a plain list
 export const CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT = 50;
 export const CAPTURE_JOURNAL_EVENTS_LIMIT = 30;
+export const CAPTURE_JOURNAL_SKIPPED_LIMIT = 30;

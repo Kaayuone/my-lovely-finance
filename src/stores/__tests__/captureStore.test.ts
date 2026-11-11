@@ -8,6 +8,7 @@ const capture = vi.hoisted(() => ({
   getCapturedNotifications: vi.fn(),
   getLaunchableApps: vi.fn(),
   getListenerEvents: vi.fn(),
+  getSkippedNotifications: vi.fn(),
   setCaptureSourceEnabled: vi.fn(),
 }));
 
@@ -15,6 +16,7 @@ vi.mock('@/services/capture', () => ({
   ...capture,
   CAPTURE_JOURNAL_NOTIFICATIONS_LIMIT: 50,
   CAPTURE_JOURNAL_EVENTS_LIMIT: 30,
+  CAPTURE_JOURNAL_SKIPPED_LIMIT: 30,
 }));
 
 import { useCaptureStore } from '@/stores/captureStore';
@@ -41,6 +43,7 @@ describe('captureStore', () => {
     expect(capture.getCaptureStatus).not.toHaveBeenCalled();
     expect(capture.getCaptureSources).not.toHaveBeenCalled();
     expect(capture.getCapturedNotifications).not.toHaveBeenCalled();
+    expect(capture.getSkippedNotifications).not.toHaveBeenCalled();
     expect(capture.getLaunchableApps).not.toHaveBeenCalled();
   });
 

@@ -4,6 +4,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import CaptureAccessCard from './components/CaptureAccessCard.vue';
 import CaptureListenerEventList from './components/CaptureListenerEventList.vue';
 import CaptureNotificationList from './components/CaptureNotificationList.vue';
+import CaptureSkippedList from './components/CaptureSkippedList.vue';
 import CaptureSourcesCard from './components/CaptureSourcesCard.vue';
 
 import { useCaptureStore } from '@/stores/captureStore';
@@ -13,7 +14,8 @@ import { storeToRefs } from 'pinia';
 import { onMounted } from 'vue';
 
 const captureStore = useCaptureStore();
-const { status, sources, notifications, listenerEvents } = storeToRefs(captureStore);
+const { status, sources, notifications, skippedNotifications, listenerEvents } =
+  storeToRefs(captureStore);
 useCaptureRefresh(loadCapture, loadListenerState);
 
 onMounted(async () => {
@@ -59,6 +61,7 @@ async function onAccessChanged() {
       <CaptureAccessCard :status @changed="onAccessChanged" />
       <CaptureSourcesCard :sources />
       <CaptureNotificationList :notifications />
+      <CaptureSkippedList :skipped="skippedNotifications" />
       <CaptureListenerEventList :events="listenerEvents" />
     </template>
   </div>

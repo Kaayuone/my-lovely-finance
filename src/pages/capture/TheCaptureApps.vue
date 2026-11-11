@@ -4,6 +4,7 @@ import Checkbox from 'primevue/checkbox';
 import FloatLabel from 'primevue/floatlabel';
 import InputText from 'primevue/inputtext';
 import EmptyState from '@/components/EmptyState.vue';
+import CaptureAppIcon from './components/CaptureAppIcon.vue';
 
 import { useCaptureStore } from '@/stores/captureStore';
 
@@ -59,7 +60,8 @@ async function onToggle(packageName: string, enabled: boolean) {
 
     <template v-else>
       <p class="text-muted-color px-1 text-sm">
-        Отметьте приложения своих банков и SMS: записываются только их уведомления.
+        Отметьте приложения своих банков и SMS: записываются только их уведомления с суммой в
+        валюте.
       </p>
 
       <FloatLabel variant="on">
@@ -80,8 +82,12 @@ async function onToggle(packageName: string, enabled: boolean) {
               binary
               @update:model-value="onToggle(app.packageName, $event)"
             />
+            <CaptureAppIcon :icon="app.icon" />
             <span class="min-w-0 flex-1">
               <span class="text-color block break-words">{{ app.label }}</span>
+              <span v-if="app.isDefaultSms" class="text-primary block text-xs">
+                SMS по умолчанию
+              </span>
               <span class="text-muted-color block truncate text-xs">{{ app.packageName }}</span>
             </span>
           </label>

@@ -8,10 +8,15 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.service.notification.NotificationListenerService;
+import android.util.Base64;
 
 import androidx.core.app.NotificationManagerCompat;
 
@@ -22,9 +27,11 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The app side of notification capture: the access of the listener, the apps it listens to and the
@@ -38,6 +45,8 @@ import java.util.Map;
 @CapacitorPlugin(name = "Capture")
 public class CapturePlugin extends Plugin {
     private static final int MAX_LIMIT = 500;
+    // The list shows the icon at 2.5rem: 96px stays sharp on a phone and keeps ~150 icons small
+    private static final int ICON_SIZE_PX = 96;
 
     @Override
     public void load() {
@@ -99,17 +108,15 @@ public class CapturePlugin extends Plugin {
     public void getLaunchableApps(PluginCall call) {
         PackageManager packageManager = getContext().getPackageManager();
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        Map<String, String> labels = new LinkedHashMap<>();
+        Set<String> packageNames = new LinkedHashSet<>();
         for (ResolveInfo info : packageManager.queryIntentActivities(launcher, 0)) {
-            ApplicationInfo application = info.activityInfo.applicationInfo;
-            if (application.packageName.equals(getContext().getPackageName())) continue;
-            if (!labels.containsKey(application.packageName)) {
-                labels.put(application.packageName, application.loadLabel(packageManager).toString());
-            }
+            String packageName = info.activityInfo.applicationInfo.packageName;
+            if (!packageName.equals(getContext().getPackageName())) packageNames.add(packageName);
         }
 
+        String defaultSms = Telephony.Sms.getDefaultSmsPackage(getContext());
         JSArray apps = new JSArray();
-        for (Map.Entry<String, String> entry : labels.entrySet()) apps.put(app(entry.getKey(), entry.getValue()));
+        for (String packageName : packageNames) apps.put(app(packageName, defaultSms));
         JSObject result = new JSObject();
         result.put("apps", apps);
         call.resolve(result);
@@ -117,10 +124,10 @@ public class CapturePlugin extends Plugin {
 
     @PluginMethod
     public void getSources(PluginCall call) {
-        Map<String, String> labels = new HashMap<>();
+        String defaultSms = Telephony.Sms.getDefaultSmsPackage(getContext());
         JSArray sources = new JSArray();
         for (String packageName : CaptureDatabase.get(getContext()).getSources()) {
-            sources.put(app(packageName, label(packageName, labels)));
+            sources.put(app(packageName, defaultSms));
         }
         JSObject result = new JSObject();
         result.put("sources", sources);
@@ -168,6 +175,26 @@ public class CapturePlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getSkippedNotifications(PluginCall call) {
+        Map<String, String> labels = new HashMap<>();
+        JSArray skipped = new JSArray();
+        try (Cursor cursor = CaptureDatabase.get(getContext()).querySkippedNotifications(limit(call))) {
+            while (cursor.moveToNext()) {
+                String packageName = cursor.getString(1);
+                JSObject notification = new JSObject();
+                notification.put("id", cursor.getLong(0));
+                notification.put("packageName", packageName);
+                notification.put("appLabel", label(packageName, labels));
+                notification.put("postedAt", cursor.getLong(2));
+                skipped.put(notification);
+            }
+        }
+        JSObject result = new JSObject();
+        result.put("skipped", skipped);
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void getListenerEvents(PluginCall call) {
         JSArray events = new JSArray();
         try (Cursor cursor = CaptureDatabase.get(getContext()).queryListenerEvents(limit(call))) {
@@ -208,11 +235,40 @@ public class CapturePlugin extends Plugin {
         return Math.max(1, Math.min(MAX_LIMIT, call.getInt("limit", 50)));
     }
 
-    private static JSObject app(String packageName, String label) {
+    // The default SMS app is marked: an SMS app the person never opens looks like the one they use
+    private JSObject app(String packageName, String defaultSmsPackage) {
+        PackageManager packageManager = getContext().getPackageManager();
+        String label = packageName;
+        String icon = null;
+        try {
+            ApplicationInfo application = packageManager.getApplicationInfo(packageName, 0);
+            label = application.loadLabel(packageManager).toString();
+            icon = iconDataUrl(application.loadIcon(packageManager));
+        } catch (PackageManager.NameNotFoundException e) {
+            // Removed since it was chosen: the package name stands for the label, with no icon
+        }
+
         JSObject app = new JSObject();
         app.put("packageName", packageName);
         app.put("label", label);
+        app.put("icon", icon);
+        app.put("isDefaultSms", packageName.equals(defaultSmsPackage));
         return app;
+    }
+
+    private static String iconDataUrl(Drawable drawable) {
+        try {
+            Bitmap bitmap = Bitmap.createBitmap(ICON_SIZE_PX, ICON_SIZE_PX, Bitmap.Config.ARGB_8888);
+            drawable.setBounds(0, 0, ICON_SIZE_PX, ICON_SIZE_PX);
+            drawable.draw(new Canvas(bitmap));
+            ByteArrayOutputStream png = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, png);
+            bitmap.recycle();
+            return "data:image/png;base64," + Base64.encodeToString(png.toByteArray(), Base64.NO_WRAP);
+        } catch (RuntimeException e) {
+            // An icon that does not draw leaves the row without one rather than the list empty
+            return null;
+        }
     }
 
     // An app removed since it was chosen keeps its package name as the label
