@@ -4,7 +4,7 @@ import { currencyExponent, formatMoney, parseAmount, toDecimalString } from '@/u
 // ICU output differs between versions in spaces and the minus sign: compare only the sign, the
 // digits and the decimal comma
 function amountText(formatted: string): string {
-  return formatted.replace(/[^\d,+\-−]/g, '').replace(/−/g, '-');
+  return formatted.replace(/[^\d,+\-\u2212]/g, '').replace(/\u2212/g, '-');
 }
 
 describe('currencyExponent', () => {
@@ -15,6 +15,11 @@ describe('currencyExponent', () => {
     expect(currencyExponent('BYN')).toBe(2);
     expect(currencyExponent('XYZ')).toBe(2);
   });
+
+  it('does not take a key of Object.prototype for a currency', () => {
+    expect(currencyExponent('constructor')).toBe(2);
+    expect(currencyExponent('toString')).toBe(2);
+  });
 });
 
 describe('parseAmount', () => {
@@ -22,8 +27,8 @@ describe('parseAmount', () => {
     ['12,50', 'BYN', 1250],
     ['12.5', 'BYN', 1250],
     ['-1 234,56', 'BYN', -123456],
-    ['1 000', 'BYN', 100000],
-    ['1 000 000', 'BYN', 100000000],
+    ['1\u00A0000', 'BYN', 100000],
+    ['1\u202F000\u202F000', 'BYN', 100000000],
     ['0,05', 'BYN', 5],
     ['-0,05', 'BYN', -5],
     ['+7', 'BYN', 700],
@@ -47,6 +52,7 @@ describe('parseAmount', () => {
     [',5', 'BYN'],
     ['1 2', 'BYN'],
     ['12 34', 'BYN'],
+    ['1234 567', 'BYN'],
     ['1  000', 'BYN'],
     ['1e3', 'BYN'],
   ])('rejects %j in %s', (input, currency) => {
@@ -110,6 +116,12 @@ describe('formatMoney', () => {
   it('shows as many fraction digits as the currency has', () => {
     expect(amountText(formatMoney({ amountMinor: 1000, currency: 'JPY' }))).toBe('1000');
     expect(amountText(formatMoney({ amountMinor: 1234, currency: 'KWD' }))).toBe('1,234');
+  });
+
+  it('keeps the ISO 4217 fraction digits where ICU defaults to fewer', () => {
+    // ICU formats HUF and IQD without fraction digits by default; ISO 4217 gives them 2 and 3
+    expect(amountText(formatMoney({ amountMinor: 1250, currency: 'HUF' }))).toBe('12,50');
+    expect(amountText(formatMoney({ amountMinor: 1234, currency: 'IQD' }))).toBe('1,234');
   });
 
   it('refuses an amount that is not a safe integer', () => {

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentOperationTime, operationLocalDay } from '@/utils/operationTime';
 
 const LATE_EVENING_UTC = Date.UTC(2026, 10, 10, 21, 30);
+const MACHINE_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 function dateWithOffset(timezoneOffset: number): Date {
   const date = new Date(LATE_EVENING_UTC);
@@ -10,6 +11,9 @@ function dateWithOffset(timezoneOffset: number): Date {
 }
 
 afterEach(() => {
+  // Node resets the zone when TZ is set but not when it is deleted: set the machine zone back
+  // before restoring the variable itself
+  vi.stubEnv('TZ', MACHINE_TIME_ZONE);
   vi.unstubAllEnvs();
 });
 

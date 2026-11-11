@@ -6,6 +6,8 @@ type SignDisplay = 'auto' | 'always' | 'exceptZero';
 const formatterCache = new Map<string, Intl.NumberFormat>();
 
 export function currencyExponent(currency: string): number {
+  // Own keys only: a code like `constructor` would otherwise read an Object.prototype member
+  if (!Object.hasOwn(CURRENCY_EXPONENTS, currency)) return DEFAULT_CURRENCY_EXPONENT;
   return CURRENCY_EXPONENTS[currency] ?? DEFAULT_CURRENCY_EXPONENT;
 }
 
@@ -17,7 +19,7 @@ export function currencyExponent(currency: string): number {
 export function parseAmount(input: string, currency: string): number | null {
   // Sign, whole part (plain or grouped by thousands with a space, U+00A0 or U+202F), then an
   // optional fraction after a comma or a dot
-  const match = /^([+-]?)(\d{1,3}(?:[   ]\d{3})+|\d+)(?:[.,](\d+))?$/.exec(input.trim());
+  const match = /^([+-]?)(\d{1,3}(?:[ \u00A0\u202F]\d{3})+|\d+)(?:[.,](\d+))?$/.exec(input.trim());
   if (!match) return null;
 
   const [, sign, wholeText = '', fraction = ''] = match;
