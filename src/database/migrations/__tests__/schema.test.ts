@@ -5,6 +5,7 @@ import {
   initializeTestDatabase,
   querySql,
 } from '@/database/__tests__/sqliteTestDatabase';
+import { MIGRATIONS } from '@/database/migrations';
 
 type AccountRow = {
   name: string;
@@ -125,6 +126,8 @@ afterEach(() => {
 
 describe('schema version 1', () => {
   it('creates the accounts, cards, categories and operations tables', async () => {
+    await initializeTestDatabase(MIGRATIONS.slice(0, 1));
+
     const rows = await querySql<{ name: string }>(
       `SELECT name FROM sqlite_master
        WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'schema_version'

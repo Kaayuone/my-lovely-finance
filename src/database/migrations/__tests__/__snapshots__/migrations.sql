@@ -293,3 +293,40 @@ INSERT INTO categories (parent_id, kind, code, name, sort_order) VALUES
         ((SELECT id FROM categories WHERE code = 'finance'), 'expense', 'finance.taxes', 'Налоги', 3),
         ((SELECT id FROM categories WHERE code = 'finance'), 'expense', 'finance.life_insurance', 'Страховка жизни', 4),
         ((SELECT id FROM categories WHERE code = 'finance'), 'expense', 'finance.investments', 'Инвестиции', 5);
+
+-- version 2
+
+CREATE TABLE drafts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        capture_fingerprint TEXT NOT NULL UNIQUE,
+        package_name TEXT NOT NULL,
+        posted_at INTEGER NOT NULL CHECK (typeof(posted_at) = 'integer'),
+        title TEXT,
+        text TEXT,
+        big_text TEXT,
+        lines TEXT,
+        template_id TEXT,
+        amount_minor INTEGER CHECK (amount_minor IS NULL OR (typeof(amount_minor) = 'integer' AND amount_minor > 0)),
+        currency TEXT CHECK (currency IS NULL OR currency GLOB '[A-Z][A-Z][A-Z]'),
+        direction TEXT CHECK (direction IS NULL OR direction IN ('debit', 'credit')),
+        bank_status TEXT CHECK (bank_status IS NULL OR bank_status IN ('ok', 'declined')),
+        payee TEXT,
+        card_digits TEXT CHECK (card_digits IS NULL OR card_digits GLOB '[0-9][0-9][0-9][0-9]'),
+        balance_minor INTEGER CHECK (balance_minor IS NULL OR typeof(balance_minor) = 'integer'),
+        occurred_at INTEGER NOT NULL CHECK (typeof(occurred_at) = 'integer'),
+        utc_offset_min INTEGER NOT NULL CHECK (typeof(utc_offset_min) = 'integer' AND utc_offset_min BETWEEN -840 AND 840),
+        state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'confirmed', 'dismissed')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        CHECK ((amount_minor IS NULL) = (currency IS NULL))
+      );
+
+CREATE INDEX drafts_state_occurred_at ON drafts (state, occurred_at);
+
+CREATE TRIGGER drafts_update_updated_at
+        AFTER UPDATE ON drafts
+        FOR EACH ROW
+        WHEN NEW.updated_at = OLD.updated_at
+        BEGIN
+          UPDATE drafts SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
+        END;
