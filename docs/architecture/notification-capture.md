@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 11 ноября 2026 — `CaptureListenerService.java`, `CaptureDatabase.java` (схема очереди 3), `CaptureAmounts.java`, `CapturePlugin.java`, `MainActivity.java`, `AndroidManifest.xml`; `services/capture`, `stores/captureStore.ts`, `pages/capture/`
+> **Сверен:** 12 ноября 2026 — `CaptureListenerService.java`, `CaptureDatabase.java` (схема очереди 3), `CaptureAmounts.java`, `CapturePlugin.java`, `MainActivity.java`, `AndroidManifest.xml`; `services/capture`, `services/notificationParsing`, `stores/captureStore.ts`, `pages/capture/`
 >
 > **Пересмотр:** при изменении схемы `capture.db`, фильтров службы или API плагина `Capture`; с переносом очереди в черновики
 
@@ -16,8 +16,10 @@
 ## Сейчас
 
 Захват пишет сырые уведомления в очередь и показывает её журналом на экране «Сбор пушей» (рабочее
-название — `CAPTURE_FEATURE_TITLE` в `src/constants/capture.ts`). Разбора, черновиков и переноса
-очереди в основную базу ещё нет.
+название — `CAPTURE_FEATURE_TITLE` в `src/constants/capture.ts`). Разборщик уведомлений уже есть
+(`src/services/notificationParsing`,
+[ADR-0007](../adr/0007-notification-templates-are-data-text-with-slots.md)), но очередь его ещё не
+зовёт: черновиков и переноса очереди в основную базу нет.
 
 ## Где что лежит
 
@@ -30,6 +32,7 @@
 | JS-сторона | `src/services/capture/` | обёртка плагина; `isCaptureSupported()` — только Android |
 | Стор | `src/stores/captureStore.ts` | статус, выбранные и все приложения, журнал |
 | Экраны | `src/pages/capture/` | «Сбор пушей» (`/settings/capture`) и выбор приложений (`/settings/capture/apps`) |
+| Разборщик | `src/services/notificationParsing/` | сумма, валюта, направление, статус, получатель, карта, остаток и время из текста уведомления; готовые шаблоны банков владельца — `BUILT_IN_TEMPLATES` |
 
 ## Служба
 
@@ -88,5 +91,8 @@
   `onUpgrade` и `VERSION + 1`; выпущенный шаг не правится. Версия 2 удалила сохранённые
   уведомления без суммы, версия 3 добавила `skipped_notifications`.
 - Плагину нет веб-реализации: всё, что идёт к нему, проверяет `isCaptureSupported()` раньше.
+- Валюты перечислены дважды: в фильтре `CaptureAmounts.java` и в разборщике
+  (`services/notificationParsing/constants.ts`). Новая валюта добавляется в оба; валюты с двумя
+  смыслами («руб», «р.», «¥», BYR) разборщик нарочно не берёт (ADR-0007).
 - Журнал — 50 последних уведомлений, 30 отброшенных и 30 событий (`services/capture/constants.ts`),
   простыми списками, без виртуального скроллера.
