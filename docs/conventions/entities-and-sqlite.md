@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 12 ноября 2026 — сущности `account`, `accountCard`, `category`, `operation`, общие `entities/types.ts` и `update-builder.ts`, API `@/database`, миграция v1 и харнесс `sqliteTestDatabase.ts`; схема БД 1
+> **Сверен:** 12 ноября 2026 — сущности `account`, `accountCard`, `category`, `operation`, `draft`, общие `entities/types.ts` и `update-builder.ts`, API `@/database`, миграции v1 и v2 и харнесс `sqliteTestDatabase.ts`; схема БД 2
 >
 > **Пересмотр:** при изменении контракта репозиториев, мапперов, `database.ts`, очереди транзакций или runner'а миграций
 
@@ -14,7 +14,7 @@
 
 ## Слой данных (entities)
 
-Реализованы `account`, `accountCard`, `category` и `operation`. Инварианты модели и граница между
+Реализованы `account`, `accountCard`, `category`, `operation` и `draft`. Инварианты модели и граница между
 защитой в БД и репозитории — в [`data-layer.md`](../architecture/data-layer.md#модель).
 
 Каждая сущность лежит в `src/entities/<name>/` и состоит ровно из трёх файлов:
@@ -26,6 +26,8 @@
 в `src/entities/types.ts` без полей синхронизации. У `accountCard` аудит — только
 `Pick<Audit, 'created_at'>`; у категории три типа: `NewCategoryRow`, `CategoryRow`, `Category`.
 Доменного `NewCategory` нет: создавать можно только подкатегорию, через `insertSubcategory`.
+У черновика тоже три: `NewDraftRow`, `DraftRow`, `NewDraft` — черновики пока только вставляются,
+доменный `Draft` и `rowToDraft` появятся с первым чтением.
 
 Если у сущности есть тип-дискриминатор с несовместимыми наборами полей (например, `kind` операции,
 от которого зависит, какие поля заполнены), `New*` собирается из вариантов — по одному на значение
@@ -47,6 +49,9 @@
   тоже транзакция: соединение держит одну транзакцию, и запись мимо очереди, пришедшая посреди
   чужого сохранения, разрывает его. Внутри каждый `executeSql` получает `transaction = false`.
 - `insert*` возвращает `result.changes?.lastId`; если `id` нет — `throw new Error('Failed to get the ID of the new record')` (сообщения об ошибках — на английском).
+  Вставка порции, которая отбрасывает уже записанное (`insertDrafts`), возвращает число новых строк —
+  сумму `result.changes?.changes`; отбрасывает она только конфликт своего ключа
+  (`ON CONFLICT (...) DO NOTHING`), а не `INSERT OR IGNORE`, который пропускает и нарушения CHECK.
 - Частичное обновление принимает `Partial<Pick<X, ...>>` только с разрешёнными полями и собирает
   `SET` через `buildUpdateAssignments` из `@/entities/update-builder` только из `!== undefined`
   полей; если изменений нет (`null`) — `return`. `src/entities/update-builder.ts` перенесён

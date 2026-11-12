@@ -2,9 +2,9 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 12 ноября 2026 — миграция v1 в `definitions.ts`, репозитории и типы `account`, `accountCard`, `category`, `operation`, сторы модели, `types/finance.ts`, `utils/money.ts`, `utils/operationTime.ts` и харнесс `sqliteTestDatabase.ts`; схема БД 1
+> **Сверен:** 12 ноября 2026 — миграции v1 и v2 в `definitions.ts`, репозитории и типы `account`, `accountCard`, `category`, `operation`, `draft`, сторы модели и `draftStore.ts` с `notificationToDraft.ts`, `types/finance.ts`, `utils/money.ts`, `utils/operationTime.ts` и харнесс `sqliteTestDatabase.ts`; схема БД 2
 >
-> **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; когда очередь захвата начнут переносить в основную базу
+> **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; со «Входящими» — когда черновик свяжут с операцией
 
 Одна база SQLite `my_lovely_finance_db` (`src/database/config.ts`): на Android —
 `@capacitor-community/sqlite`, в вебе — `jeep-sqlite` поверх `sql.js` с хранилищем в IndexedDB.
@@ -14,9 +14,9 @@
 
 ## Модель
 
-Схема БД 1: одна миграция создаёт четыре таблицы, их индексы, триггеры и встроенные категории.
-`schema_version` отдельно хранит одну строку с номером последнего применённого шага. Деньги, даты
-и баланс — по [ADR-0005](../adr/0005-money-as-signed-minor-units-moment-with-offset-computed-balance.md),
+Схема БД 2: миграция v1 создаёт четыре таблицы модели, их индексы, триггеры и встроенные категории,
+v2 — таблицу черновиков `drafts`. `schema_version` отдельно хранит одну строку с номером последнего
+применённого шага. Деньги, даты и баланс — по [ADR-0005](../adr/0005-money-as-signed-minor-units-moment-with-offset-computed-balance.md),
 категории — по [ADR-0006](../adr/0006-two-level-categories-built-in-main-own-subcategories.md).
 
 | Таблица         | Назначение и ключевые ограничения                                                                                                                                                                                                                                                                                                                                    |
@@ -25,9 +25,10 @@
 | `account_cards` | Последние четыре цифры карты строкой, чтобы сохранить ведущие нули. Пара `(account_id, last_digits)` уникальна; у одного счёта может быть несколько карт, одни цифры могут относиться к нескольким счетам, в том числе у мультивалютной карты. Карты удаляются со счётом (`ON DELETE CASCADE`).                                                                      |
 | `categories`    | Два набора (`expense`, `income`), основная категория или её подкатегория. У встроенной есть уникальный постоянный `code`, у своей — `NULL`; основная без кода запрещена. Имя непустое, уникально среди основных одного набора и среди подкатегорий одной основной. Есть скрытие и порядок.                                                                           |
 | `operations`    | Расход, доход, перевод или корректировка (`expense`, `income`, `transfer`, `adjustment`). Сумма ненулевая, деньги и время проверяются на целочисленность через `typeof(...) = 'integer'`. Ссылки на счета и категории — `ON DELETE RESTRICT`; источник — `manual` или `notification`. Ограничения и триггеры не дают смешать поля разных видов или наборы категорий. |
+| `drafts`        | Черновик операции из пойманного уведомления: сырые тексты и то, что прочитал разборщик. `capture_fingerprint` уникален. Сумма — положительное целое, знак — `direction` (`debit`, `credit`); сумма и валюта обе заданы или обе `NULL`. Статус банка `ok` или `declined`, цифры карты — четыре цифры, время со смещением — как у операций. Состояние `pending`, `confirmed` или `dismissed`. |
 
-У всех четырёх таблиц есть `created_at` в UTC; у счетов, категорий и операций ещё `updated_at`,
-который обновляют триггеры `*_update_updated_at`. У карт `updated_at` нет.
+У всех пяти таблиц есть `created_at` в UTC; у счетов, категорий, операций и черновиков ещё
+`updated_at`, который обновляют триггеры `*_update_updated_at`. У карт `updated_at` нет.
 
 **Суммы и виды операций.** Сумма — целое со знаком в минимальных единицах валюты счёта.
 Правило записи (решение владельца от 11 ноября 2026):
@@ -102,11 +103,36 @@
 индексов `(account_id, occurred_at)` и `(to_account_id, occurred_at)` пока нет: перед экраном
 истории счёта нужен замер на телефоне (задача в [`TODO.md`](../../TODO.md)).
 
+**Черновики.** Черновик — то, что рассказало пойманное уведомление, пока человек не подтвердил его
+операцией. Сырые тексты (`title`, `text`, `big_text`, `lines`) лежат в черновике: новый шаблон
+сможет прочитать его заново, а «Исправить» — учить шаблон по нему. Остальные поля — результат
+разборщика ([ADR-0007](../adr/0007-notification-templates-are-data-text-with-slots.md)) и `NULL`
+там, где он ничего не нашёл:
+
+- Сумма — положительное целое в минимальных единицах валюты уведомления, знак — `direction`. Вид
+  операции и знак по ADR-0005 решает подтверждение черновика, а не разборщик. Неразобранный
+  черновик — без суммы и валюты, это держит CHECK `(amount_minor IS NULL) = (currency IS NULL)`.
+- `occurred_at` — время операции по словам банка, а если он его не назвал или назвал неправдоподобное
+  — время публикации; `utc_offset_min` — смещение пояса телефона в этот момент.
+- Отклонённая банком операция (`bank_status = 'declined'`) записывается сразу в `dismissed`: денег
+  она не двигала и расходом стать не должна.
+- `capture_fingerprint` — ссылка на запись очереди захвата, уникальная: повторно забранная запись не
+  создаёт второй черновик. Ссылка — отпечаток, а не id очереди: испорченную `capture.db` Android
+  создаёт заново, её id снова начинаются с 1, и уникальный id молча отбросил бы новые уведомления.
+- `confirmed` разрешён CHECK уже сейчас: поменять CHECK в SQLite можно только пересборкой таблицы.
+  Связь с операцией (`operation_id`) добавит задача «Входящих» отдельным столбцом.
+
+Черновики пишет только перенос очереди: порция — одна транзакция, вставка — `INSERT ... ON CONFLICT
+(capture_fingerprint) DO NOTHING`. `INSERT OR IGNORE` здесь нельзя: он так же молча пропускает
+строку, нарушившую CHECK, то есть теряет черновик; нарушение CHECK откатывает порцию целиком.
+Экрана черновиков и чтения их ещё нет.
+
 Вне этой базы — очередь захвата уведомлений `capture.db`: её пишет нативная служба, пока WebView нет,
 схема живёт в Java, миграции приложения её не касаются
 ([ADR-0003](../adr/0003-captured-notifications-go-to-a-native-queue-the-app-takes-them-from.md),
-[`notification-capture.md`](notification-capture.md)). Писатель основной базы остаётся один —
-приложение.
+[`notification-capture.md`](notification-capture.md)). Приложение забирает её в черновики
+([`notification-capture.md`](notification-capture.md#перенос-в-черновики)); писатель основной базы
+остаётся один — приложение.
 
 ## Где что лежит
 
@@ -115,8 +141,9 @@
 | Соединение | `src/database/database.ts` | `initializeDatabase`, `executeSql`, `querySql`, `runInTransaction`, сохранение веб-хранилища |
 | Очередь транзакций | `src/database/transaction.ts` | порядок, откат, сохранение веб-хранилища после коммита |
 | Миграции | `src/database/migrations/` | `MIGRATIONS` и раннер |
-| Сущности | `src/entities/account/`, `accountCard/`, `category/`, `operation/`; `src/entities/types.ts`, `update-builder.ts` | типы строк и домена, чистые мапперы, SQL и транзакции репозиториев; общие `Audit`, `DistributiveOmit` и сборка частичного UPDATE без sync-полей |
+| Сущности | `src/entities/account/`, `accountCard/`, `category/`, `operation/`, `draft/`; `src/entities/types.ts`, `update-builder.ts` | типы строк и домена, чистые мапперы, SQL и транзакции репозиториев; общие `Audit`, `DistributiveOmit` и сборка частичного UPDATE без sync-полей |
 | Состояние модели | `src/stores/accountStore.ts`, `categoryStore.ts`, `operationStore.ts`, `createScopedListState.ts` | счета с картами и вычисленными балансами, два дерева категорий, порции операций с защитой от устаревших загрузок; мутации не перезагружают списки |
+| Перенос очереди захвата | `src/stores/draftStore.ts`, `notificationToDraft.ts`; поводы — `src/App.vue` | порции очереди в черновики, подтверждение после коммита |
 | Деньги и время | `src/types/finance.ts`, `src/constants/currency.ts`, `operation.ts`, `src/utils/money.ts`, `operationTime.ts` | общие типы предметной области, разбор и форматирование сумм, день операции по её смещению, параметры порций |
 | Статус старта | `src/database/bootstrap.ts`, `src/services/startup/` | `dbInitStatus`, `startDatabase` |
 | Тесты | `src/database/__tests__/sqliteTestDatabase.ts` | настоящий SQLite (sql.js) в памяти для тестов репозиториев и миграций |
