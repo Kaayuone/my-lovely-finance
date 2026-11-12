@@ -30,6 +30,11 @@ export type Account = NewAccount & {
   sortOrder: number;
 };
 
+// Account type and currency cannot change after creation.
+export type AccountChanges = Partial<
+  Pick<Account, 'name' | 'openingBalanceMinor' | 'bankPackage' | 'sortOrder'>
+>;
+
 export interface AccountBalanceRow {
   account_id: number;
   balance_minor: number;

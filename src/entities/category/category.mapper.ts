@@ -1,4 +1,4 @@
-import type { Category, CategoryRow } from '@/entities/category/category.types';
+import type { Category, CategoryRow } from './category.types';
 
 export function rowToCategory(row: CategoryRow): Category {
   return {

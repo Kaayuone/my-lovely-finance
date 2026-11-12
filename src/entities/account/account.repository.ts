@@ -5,6 +5,7 @@ import type {
   Account,
   AccountBalance,
   AccountBalanceRow,
+  AccountChanges,
   AccountRow,
   NewAccount,
 } from './account.types';
@@ -34,10 +35,7 @@ export async function insertAccount(account: NewAccount): Promise<number> {
 }
 
 // The type and the currency are fixed once the account exists: its operations are in that currency
-export async function updateAccount(
-  id: number,
-  changes: Partial<Pick<Account, 'name' | 'openingBalanceMinor' | 'bankPackage' | 'sortOrder'>>,
-): Promise<void> {
+export async function updateAccount(id: number, changes: AccountChanges): Promise<void> {
   const assignments = buildUpdateAssignments([
     { column: 'name', value: changes.name },
     { column: 'opening_balance_minor', value: changes.openingBalanceMinor },

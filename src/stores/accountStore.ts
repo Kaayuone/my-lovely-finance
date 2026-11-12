@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import * as accountRepository from '@/entities/account/account.repository';
 import * as accountCardRepository from '@/entities/accountCard/accountCard.repository';
 
-import type { Account, NewAccount } from '@/entities/account/account.types';
+import type { Account, AccountChanges, NewAccount } from '@/entities/account/account.types';
 import type { AccountCard, NewAccountCard } from '@/entities/accountCard/accountCard.types';
 
 export const useAccountStore = defineStore('accounts', () => {
@@ -40,10 +40,7 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
-  async function updateAccount(
-    id: number,
-    changes: Partial<Pick<Account, 'name' | 'openingBalanceMinor' | 'bankPackage' | 'sortOrder'>>,
-  ) {
+  async function updateAccount(id: number, changes: AccountChanges) {
     loading.value = true;
     try {
       await accountRepository.updateAccount(id, changes);

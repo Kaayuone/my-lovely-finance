@@ -1,6 +1,6 @@
 import { executeSql, querySql, runInTransaction } from '@/database';
-import { rowToCategory } from '@/entities/category/category.mapper';
-import type { Category, CategoryRow, NewCategoryRow } from '@/entities/category/category.types';
+import { rowToCategory } from './category.mapper';
+import type { Category, CategoryRow, NewCategoryRow } from './category.types';
 
 export async function getCategories(): Promise<Category[]> {
   const res = await querySql<CategoryRow>('SELECT * FROM categories ORDER BY kind, sort_order, id');
