@@ -31,7 +31,7 @@ final class CaptureDatabase extends SQLiteOpenHelper {
     static final String EVENT_REBIND_REQUESTED = "rebind_requested";
 
     private static final String NAME = "capture.db";
-    private static final int VERSION = 3;
+    private static final int VERSION = 4;
 
     private static CaptureDatabase instance;
 
@@ -71,6 +71,7 @@ final class CaptureDatabase extends SQLiteOpenHelper {
                 + "uptime_ms INTEGER NOT NULL)"
         );
         createSkippedNotifications(db);
+        createAppCursor(db);
     }
 
     // One step per version, never edited once released. SQLiteOpenHelper runs them in a transaction
@@ -78,6 +79,7 @@ final class CaptureDatabase extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) deleteNotificationsWithoutAmount(db);
         if (oldVersion < 3) createSkippedNotifications(db);
+        if (oldVersion < 4) createAppCursor(db);
     }
 
     // Version 3: notifications of a chosen app the amount filter dropped — the app and the time only,
@@ -92,6 +94,15 @@ final class CaptureDatabase extends SQLiteOpenHelper {
                 + "captured_at INTEGER NOT NULL, "
                 + "UNIQUE (package_name, posted_at))"
         );
+    }
+
+    // Version 4: how far the app has moved the queue into its drafts — the greatest id it has taken
+    // and committed (ADR-0003). One number is enough, no flag on every row: the ids only grow
+    // (AUTOINCREMENT) and the listener is the one writer, so rows reach the queue in the order of
+    // their ids. A file created anew after corruption starts again at 0 together with its ids
+    private static void createAppCursor(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE app_cursor (last_notification_id INTEGER NOT NULL)");
+        db.execSQL("INSERT INTO app_cursor (last_notification_id) VALUES (0)");
     }
 
     // Version 2 keeps only notifications that name an amount (ADR-0004): what version 1 captured
@@ -179,6 +190,30 @@ final class CaptureDatabase extends SQLiteOpenHelper {
             null,
             "id DESC",
             String.valueOf(limit)
+        );
+    }
+
+    // The notifications the app has not taken into its drafts yet, oldest first: the journal columns
+    // and the fingerprint
+    Cursor queryPendingNotifications(int limit) {
+        return getReadableDatabase().query(
+            "notifications",
+            new String[] { "id", "package_name", "posted_at", "captured_at", "origin", "title", "text", "big_text", "sub_text", "lines", "fingerprint" },
+            "id > (SELECT last_notification_id FROM app_cursor)",
+            null,
+            null,
+            null,
+            "id ASC",
+            String.valueOf(limit)
+        );
+    }
+
+    // Called once the drafts up to this id are committed. The cursor never moves back, so a late or
+    // repeated answer cannot hand the app a batch it has already taken
+    void acknowledgeNotifications(long upToId) {
+        getWritableDatabase().execSQL(
+            "UPDATE app_cursor SET last_notification_id = MAX(last_notification_id, ?)",
+            new Object[] { upToId }
         );
     }
 

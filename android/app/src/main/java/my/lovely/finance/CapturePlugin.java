@@ -34,9 +34,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The app side of notification capture: the access of the listener, the apps it listens to and the
- * capture queue as a journal (ADR-0003). The JavaScript half is {@code services/capture}, the
- * registration is in {@code MainActivity}.
+ * The app side of notification capture: the access of the listener, the apps it listens to, the
+ * capture queue as a journal and its move into the drafts of the app (ADR-0003). The JavaScript half
+ * is {@code services/capture}, the registration is in {@code MainActivity}.
  *
  * <p>Notification access has no permission dialog: the system grants it only on its own settings
  * page. From Android 11 that page can be opened on the switch of this one listener; below it — and
@@ -152,26 +152,50 @@ public class CapturePlugin extends Plugin {
         Map<String, String> labels = new HashMap<>();
         JSArray notifications = new JSArray();
         try (Cursor cursor = CaptureDatabase.get(getContext()).queryNotifications(limit(call))) {
-            while (cursor.moveToNext()) {
-                String packageName = cursor.getString(1);
-                JSObject notification = new JSObject();
-                notification.put("id", cursor.getLong(0));
-                notification.put("packageName", packageName);
-                notification.put("appLabel", label(packageName, labels));
-                notification.put("postedAt", cursor.getLong(2));
-                notification.put("capturedAt", cursor.getLong(3));
-                notification.put("origin", cursor.getString(4));
-                notification.put("title", cursor.getString(5));
-                notification.put("text", cursor.getString(6));
-                notification.put("bigText", cursor.getString(7));
-                notification.put("subText", cursor.getString(8));
-                notification.put("lines", cursor.getString(9));
-                notifications.put(notification);
-            }
+            while (cursor.moveToNext()) notifications.put(notification(cursor, labels));
         }
         JSObject result = new JSObject();
         result.put("notifications", notifications);
         call.resolve(result);
+    }
+
+    // What the app has not moved into its drafts yet, oldest first (ADR-0003). Called on every start
+    // and return to the app, so a failure of the queue rejects the call instead of ending the process
+    @PluginMethod
+    public void getPendingNotifications(PluginCall call) {
+        Map<String, String> labels = new HashMap<>();
+        JSArray notifications = new JSArray();
+        try (Cursor cursor = CaptureDatabase.get(getContext()).queryPendingNotifications(limit(call))) {
+            while (cursor.moveToNext()) {
+                JSObject notification = notification(cursor, labels);
+                notification.put("fingerprint", cursor.getString(10));
+                notifications.put(notification);
+            }
+        } catch (RuntimeException e) {
+            call.reject("Failed to read the pending notifications of the capture queue", e);
+            return;
+        }
+        JSObject result = new JSObject();
+        result.put("notifications", notifications);
+        call.resolve(result);
+    }
+
+    // Only after the drafts of a batch are committed: the queue stops handing out every notification
+    // up to this id
+    @PluginMethod
+    public void acknowledgeNotifications(PluginCall call) {
+        // An id that fits an int arrives as an Integer, and getLong answers null for it
+        Object upToId = call.getData().opt("upToId");
+        if (!(upToId instanceof Number)) {
+            call.reject("upToId is required");
+            return;
+        }
+        try {
+            CaptureDatabase.get(getContext()).acknowledgeNotifications(((Number) upToId).longValue());
+            call.resolve();
+        } catch (RuntimeException e) {
+            call.reject("Failed to acknowledge the notifications of the capture queue", e);
+        }
     }
 
     @PluginMethod
@@ -210,6 +234,24 @@ public class CapturePlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("events", events);
         call.resolve(result);
+    }
+
+    // A row of the notifications table read in the journal column order
+    private JSObject notification(Cursor cursor, Map<String, String> labels) {
+        String packageName = cursor.getString(1);
+        JSObject notification = new JSObject();
+        notification.put("id", cursor.getLong(0));
+        notification.put("packageName", packageName);
+        notification.put("appLabel", label(packageName, labels));
+        notification.put("postedAt", cursor.getLong(2));
+        notification.put("capturedAt", cursor.getLong(3));
+        notification.put("origin", cursor.getString(4));
+        notification.put("title", cursor.getString(5));
+        notification.put("text", cursor.getString(6));
+        notification.put("bigText", cursor.getString(7));
+        notification.put("subText", cursor.getString(8));
+        notification.put("lines", cursor.getString(9));
+        return notification;
     }
 
     private ComponentName listenerComponent() {

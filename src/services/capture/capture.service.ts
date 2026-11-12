@@ -5,6 +5,7 @@ import type {
   CaptureStatus,
   CapturedNotification,
   ListenerEvent,
+  PendingNotification,
   SkippedNotification,
 } from './capture.types';
 
@@ -54,6 +55,18 @@ export async function setCaptureSourceEnabled(
 export async function getCapturedNotifications(limit: number): Promise<CapturedNotification[]> {
   const { notifications } = await Capture.getNotifications({ limit });
   return notifications;
+}
+
+// The oldest notifications of the queue the app has not taken into its drafts yet (ADR-0003)
+export async function getPendingNotifications(limit: number): Promise<PendingNotification[]> {
+  const { notifications } = await Capture.getPendingNotifications({ limit });
+  return notifications;
+}
+
+// Only once the drafts of a batch are committed: the queue stops handing out every notification up
+// to this id. Before the commit, a process that dies would lose the batch
+export async function acknowledgeNotifications(upToId: number): Promise<void> {
+  await Capture.acknowledgeNotifications({ upToId });
 }
 
 export async function getSkippedNotifications(limit: number): Promise<SkippedNotification[]> {

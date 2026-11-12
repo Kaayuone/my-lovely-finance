@@ -36,6 +36,10 @@ export type CapturedNotification = {
   lines: string | null;
 };
 
+// A queue row the app has not moved into its drafts yet. The fingerprint becomes the key of the
+// draft, so a row taken twice — the app died before it acknowledged the batch — stays one draft
+export type PendingNotification = CapturedNotification & { fingerprint: string };
+
 // A notification of a chosen app the amount filter dropped: the app and the time, never the text
 export type SkippedNotification = {
   id: number;
@@ -64,6 +68,10 @@ export type CapturePluginApi = {
   getSources(): Promise<{ sources: CaptureApp[] }>;
   setSourceEnabled(options: { packageName: string; enabled: boolean }): Promise<void>;
   getNotifications(options: { limit: number }): Promise<{ notifications: CapturedNotification[] }>;
+  getPendingNotifications(options: {
+    limit: number;
+  }): Promise<{ notifications: PendingNotification[] }>;
+  acknowledgeNotifications(options: { upToId: number }): Promise<void>;
   getSkippedNotifications(options: { limit: number }): Promise<{ skipped: SkippedNotification[] }>;
   getListenerEvents(options: { limit: number }): Promise<{ events: ListenerEvent[] }>;
   addListener(eventName: 'changed', listener: () => void): Promise<PluginListenerHandle>;
