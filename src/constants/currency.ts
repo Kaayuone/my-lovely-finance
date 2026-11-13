@@ -30,3 +30,18 @@ export const CURRENCY_EXPONENTS: Record<string, number> = {
   CLF: 4,
   UYW: 4,
 };
+
+// The currencies an account can be opened in, in the order the picker shows them
+export const CURRENCY_OPTIONS: ReadonlyArray<{ code: string; label: string }> = [
+  { code: 'BYN', label: 'BYN — белорусский рубль' },
+  { code: 'USD', label: 'USD — доллар США' },
+  { code: 'EUR', label: 'EUR — евро' },
+  { code: 'RUB', label: 'RUB — российский рубль' },
+  { code: 'KZT', label: 'KZT — казахстанский тенге' },
+  { code: 'PLN', label: 'PLN — польский злотый' },
+  { code: 'UAH', label: 'UAH — украинская гривна' },
+  { code: 'CNY', label: 'CNY — китайский юань' },
+];
+
+// Fixed until the default is taken from the phone's locale
+export const DEFAULT_ACCOUNT_CURRENCY = 'BYN';

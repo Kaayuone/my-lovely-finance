@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { currencyExponent, formatMoney, parseAmount, toDecimalString } from '@/utils/money';
+import {
+  currencyExponent,
+  formatMoney,
+  parseAmount,
+  toAmountInputText,
+  toDecimalString,
+} from '@/utils/money';
 
 // ICU output differs between versions in spaces and the minus sign: compare only the sign, the
 // digits and the decimal comma
@@ -84,6 +90,35 @@ describe('toDecimalString', () => {
     [1234, 'KWD', '1.234'],
   ])('writes %d minor units of %s as %s', (amountMinor, currency, expected) => {
     expect(toDecimalString({ amountMinor, currency })).toBe(expected);
+  });
+});
+
+describe('toAmountInputText', () => {
+  it.each([
+    [-100050, 'BYN', '-1000,50'],
+    [1234, 'BYN', '12,34'],
+    [5, 'BYN', '0,05'],
+    [1000, 'JPY', '1000'],
+    [1234, 'KWD', '1,234'],
+    [1000, 'KWD', '1,000'],
+  ])('writes %d minor units of %s as %j', (amountMinor, currency, expected) => {
+    expect(toAmountInputText({ amountMinor, currency })).toBe(expected);
+  });
+
+  it('leaves the field empty for zero', () => {
+    expect(toAmountInputText({ amountMinor: 0, currency: 'BYN' })).toBe('');
+    expect(toAmountInputText({ amountMinor: 0, currency: 'JPY' })).toBe('');
+  });
+
+  it('gives back the same amount when the text is saved unchanged', () => {
+    for (const [amountMinor, currency] of [
+      [-100050, 'BYN'],
+      [Number.MAX_SAFE_INTEGER, 'BYN'],
+      [1000, 'KWD'],
+      [-7, 'JPY'],
+    ] as const) {
+      expect(parseAmount(toAmountInputText({ amountMinor, currency }), currency)).toBe(amountMinor);
+    }
   });
 });
 

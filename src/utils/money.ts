@@ -52,6 +52,16 @@ export function toDecimalString({ amountMinor, currency }: Money): `${number}` {
   return decimal as `${number}`;
 }
 
+/**
+ * The text an amount field starts with when a saved amount is edited: `-1000,50` for -100050 minor
+ * units of BYN, an empty field for zero. The sign is kept, so a field that takes the amount without
+ * it is given the negated minor units.
+ */
+export function toAmountInputText(money: Money): string {
+  if (money.amountMinor === 0) return '';
+  return toDecimalString(money).replace('.', ',');
+}
+
 export function formatMoney(
   money: Money,
   { signDisplay = 'auto' }: { signDisplay?: SignDisplay } = {},
