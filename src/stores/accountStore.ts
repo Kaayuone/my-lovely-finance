@@ -61,11 +61,11 @@ export const useAccountStore = defineStore('accounts', () => {
   async function updateAccountWithCards(
     id: number,
     changes: AccountChanges,
-    cards: { add: readonly string[]; removeIds: readonly number[] },
+    cardChanges: { add: readonly string[]; removeIds: readonly number[] },
   ) {
     loading.value = true;
     try {
-      await accountRepository.updateAccountWithCards(id, changes, cards);
+      await accountRepository.updateAccountWithCards(id, changes, cardChanges);
     } finally {
       loading.value = false;
     }
