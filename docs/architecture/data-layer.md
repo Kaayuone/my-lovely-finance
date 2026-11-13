@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 13 ноября 2026 — миграции v1 и v2 в `definitions.ts`, репозитории и типы `account`, `accountCard`, `category`, `operation`, `draft`, сторы модели и `draftStore.ts` с `notificationToDraft.ts`, `types/finance.ts`, `utils/money.ts`, `utils/operationTime.ts`, формы `features/AddAccountDialog` и `features/AddOperationDialog` (`utils.ts`, `validation.ts`), страницы `pages/accounts` и `pages/operations` и харнесс `sqliteTestDatabase.ts`; схема БД 2
+> **Сверен:** 13 ноября 2026 — миграции v1 и v2 в `definitions.ts`, репозитории и типы `account`, `accountCard`, `category`, `operation`, `draft`, сторы модели и `draftStore.ts` с `notificationToDraft.ts`, `types/finance.ts`, `utils/money.ts`, `utils/operationTime.ts`, формы `features/AddAccountDialog` и `features/AddOperationDialog` (`utils.ts`, `validation.ts`), страницы `pages/accounts` и `pages/operations`, `sort_order` нового счёта в `account.repository.ts` и харнесс `sqliteTestDatabase.ts`; схема БД 2
 >
 > **Пересмотр:** при изменении инициализации БД, раннера миграций или правил транзакций; при изменении правил записи из форм; со «Входящими» — когда черновик свяжут с операцией
 
@@ -147,12 +147,13 @@ v2 — таблицу черновиков `drafts`. `schema_version` отдел
 (`account.repository.ts`) пишут счёт и его карты в одной `runInTransaction`. Карты они ставят и
 снимают через `insertAccountCardInTransaction` и `deleteAccountCardInTransaction` репозитория карт,
 а не через его собственные транзакции: вложенный вызов ждал бы сам себя
-([`entities-and-sqlite.md`](../conventions/entities-and-sqlite.md#слой-данных-entities)). Причина
+([`entities-and-sqlite.md`](../conventions/entities-and-sqlite.md#слой-базы-данных-sqlite)). Причина
 — отказ карты не должен оставлять сохранённый счёт при открытой форме: повторное «Сохранить»
 создало бы второй такой же счёт. При правке сначала снимаются убранные карты, потом добавляются
 новые, чтобы убрать карту и вернуть те же цифры одним сохранением не мешала уникальность пары
-`(account_id, last_digits)`; карта снимается только со своего счёта. Новый счёт встаёт в конец
-списка, после архивных.
+`(account_id, last_digits)`; карта снимается только со своего счёта. Новый счёт — последний среди
+активных: его `sort_order` больше, чем у всех счетов, включая архивные, поэтому счёт, возвращённый
+из архива позже, встанет в списке выше него.
 
 **Что вводится в форме счёта.**
 

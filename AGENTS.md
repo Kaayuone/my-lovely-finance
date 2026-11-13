@@ -98,8 +98,9 @@ Capacitor. Хранение данных — локальный SQLite. Сети
   Руками в Gradle версию не правим.
 - Деньги — данные пользователя: ошибка в сумме, валюте или знаке хуже падения. Суммы — целые со
   знаком в минимальных единицах валюты ([ADR-0005](docs/adr/0005-money-as-signed-minor-units-moment-with-offset-computed-balance.md)).
-  Текст в сумму и обратно — только `parseAmount`, `formatMoney` и `toDecimalString` из
-  `@/utils/money`: ни `parseFloat`, ни `* 100`, ни `InputNumber` над суммами
+  Текст в сумму и обратно — только `parseAmount`, `formatMoney`, `toDecimalString` и
+  `toAmountInputText` (сохранённая сумма → текст поля) из `@/utils/money`: ни `parseFloat`, ни
+  `* 100`, ни `InputNumber` над суммами
   ([`form-validation.md`](docs/conventions/form-validation.md#поле-суммы)).
 
 ## Core workflow

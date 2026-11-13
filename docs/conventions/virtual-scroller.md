@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 13 ноября 2026 — `package.json` (`vue-virtual-scroller` 3.0.5) и его типы (`RecycleScroller.vue.d.ts`, `DynamicScroller`), `main.ts`, `router/index.ts`, `DefaultLayout.vue`, `utils/scroller.ts`, `pages/operations/` (`TheOperations.vue`, `utils.ts`, `types.ts`); `px-column-*` и роль `text-line` в `assets/main.css`
+> **Сверен:** 13 ноября 2026 — `package.json` (`vue-virtual-scroller` 3.0.5) и его типы (`RecycleScroller.vue.d.ts`, `DynamicScroller`), `main.ts`, `router/index.ts`, `DefaultLayout.vue`, `utils/scroller.ts`, `pages/operations/` (`TheOperations.vue` с размерами строки у `min-item-size`, `utils.ts`, `types.ts`); `px-column-*` и роль `text-line` в `assets/main.css`
 >
 > **Пересмотр:** при обновлении `vue-virtual-scroller` (в частности передачи `emit-update` и события `scroll-end`), при изменении `itemVersion`, `reloadPinningTop` или `withDayHeadings`; со вторым списком на скроллере
 
@@ -59,8 +59,8 @@
 - `:min-item-size` — **средняя** высота элемента в px (строки, заголовки и разделители вместе), а не
   минимальная: ею скроллер считает ещё не измеренные элементы, а у списка, где каждый второй элемент
   — линия в 9 px, оценка по строке почти вдвое удлиняет прокрутку до замера. Число и расчёт — коротким
-  комментарием у скроллера (лента — `32`: строка 52–56 px, с подписью комиссии 70, линия 9, заголовок
-  дня 32).
+  комментарием у скроллера (лента — `32`: строка 52 px, от w400 — 54, с подписью комиссии 70 и 72,
+  линия 9, заголовок дня 32).
 - Сдвиг всех элементов, если он нужен, — на их обёртке, `list-class`, а не отступом первого
   элемента: высота элемента не зависит от его места в списке.
 - Слот `#default="{ item, index, active }"`; при необходимости переименовываем: `{ item: entry, index, active }`.
@@ -78,7 +78,8 @@
 <!-- `operationEntries` is `withDayHeadings(rows, today)`: `h:` headings, `r:<id>:<version>` rows and
      `s:<id>` lines -->
 <!-- An item not measured yet counts as `min-item-size`, so it is the average item: a row is
-     52–56 px, the separator under it 9 and a day heading 32, (54 + 9) / 2 ≈ 32 -->
+     52 px, 54 from w400 (70 and 72 with a fee note), the separator under it 9 and a day heading
+     32, (54 + 9) / 2 ≈ 32 -->
 <DynamicScroller
   ref="scrollerRef"
   :items="operationEntries"
