@@ -7,6 +7,7 @@ import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import Ripple from 'primevue/ripple';
+import ToastService from 'primevue/toastservice';
 import { definePreset } from '@primeuix/themes';
 import { ru } from 'primelocale/js/ru.js';
 
@@ -43,6 +44,7 @@ app.use(PrimeVue, {
   },
   ripple: true,
 });
+app.use(ToastService);
 app.directive('ripple', Ripple);
 
 async function bootstrap() {
