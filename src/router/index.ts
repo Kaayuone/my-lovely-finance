@@ -19,6 +19,8 @@ declare module 'vue-router' {
     tab?: string;
     // The page the back button of the header leads to when there is no history entry to go back to
     backTo?: string;
+    // The page is a list on `DynamicScroller`, which pads itself: DefaultLayout leaves `<main>` bare
+    virtualScroller?: boolean;
   }
 }
 
@@ -37,7 +39,7 @@ const routes: RouteRecordRaw[] = [
         path: '/operations',
         name: 'operations',
         component: TheOperations,
-        meta: { title: 'Операции' },
+        meta: { title: 'Операции', virtualScroller: true },
       },
       {
         path: '/accounts',

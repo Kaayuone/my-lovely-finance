@@ -14,6 +14,9 @@ import { ru } from 'primelocale/js/ru.js';
 import App from './App.vue';
 import router from './router';
 
+import VirtualScroller from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/index.css';
+
 import { startDatabase } from '@/services/startup';
 import { buildPrimaryRamp, DEFAULT_ACCENT_COLOR } from '@/services/theme';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -23,6 +26,7 @@ const app = createApp(App);
 const pinia = createPinia();
 app.use(pinia);
 app.use(router);
+app.use(VirtualScroller);
 
 const preset = definePreset(Aura, {
   semantic: {
