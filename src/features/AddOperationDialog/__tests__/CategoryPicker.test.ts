@@ -143,10 +143,26 @@ describe('CategoryPicker', () => {
     await openPicker(underHiddenMain);
 
     expect(rowTexts(underHiddenMain)).toEqual(['Еда и напитки', 'Связь', 'Питомцы']);
+  });
 
-    await tapRow(underHiddenMain, 'Питомцы');
+  it('offers a hidden main category only when it is the selected one', async () => {
+    const asPath = mountPicker(PET_FOOD.id);
+    await openPicker(asPath);
+    await tapRow(asPath, 'Питомцы');
 
-    expect(rowTexts(underHiddenMain)).toEqual(['Вся категория «Питомцы»', 'Корм']);
+    expect(findDialog(asPath).get('h2').text()).toBe('Питомцы');
+    expect(rowTexts(asPath)).toEqual(['Корм']);
+
+    const asSelected = mountPicker(PETS.id);
+    await openPicker(asSelected);
+
+    expect(rowTexts(asSelected)).toEqual(['Еда и напитки', 'Связь', 'Питомцы']);
+
+    await tapRow(asSelected, 'Питомцы');
+
+    expect(asSelected.emitted('update:modelValue')).toBeUndefined();
+    expect(findDialog(asSelected).exists()).toBe(false);
+    expect(asSelected.get('#operation_category').text()).toBe('Питомцы');
   });
 
   it('picks a main category without visible subcategories with one tap', async () => {

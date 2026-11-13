@@ -134,24 +134,28 @@ function isSelected(category: Category): boolean {
       <DialogFocusGuard />
 
       <template v-if="openedParent">
-        <div
-          role="button"
-          class="active:bg-card flex w-full items-center gap-3 rounded-md px-2 py-3"
-          @click="select(openedParent)"
-        >
-          <span class="min-w-0 flex-1 wrap-break-word">
-            Вся категория «{{ openedParent.name }}»
-          </span>
+        <!-- A hidden main category shown only as the way to the selected subcategory cannot be
+             chosen itself -->
+        <template v-if="!openedParent.isHidden || isSelected(openedParent)">
+          <div
+            role="button"
+            class="active:bg-card flex w-full items-center gap-3 rounded-md px-2 py-3"
+            @click="select(openedParent)"
+          >
+            <span class="min-w-0 flex-1 wrap-break-word">
+              Вся категория «{{ openedParent.name }}»
+            </span>
 
-          <Check
-            v-if="isSelected(openedParent)"
-            :size="18"
-            class="text-primary shrink-0"
-            aria-hidden="true"
-          />
-        </div>
+            <Check
+              v-if="isSelected(openedParent)"
+              :size="18"
+              class="text-primary shrink-0"
+              aria-hidden="true"
+            />
+          </div>
 
-        <hr class="text-line my-1" />
+          <hr class="text-line my-1" />
+        </template>
 
         <div
           v-for="child in openedParent.children"
