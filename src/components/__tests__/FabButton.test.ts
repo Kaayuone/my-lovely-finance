@@ -14,6 +14,15 @@ describe('FabButton', () => {
     });
 
     expect(wrapper.get('button').attributes('aria-label')).toBe('Добавить счёт');
+    expect(wrapper.get('button').classes()).toEqual(
+      expect.arrayContaining([
+        'fixed!',
+        'bottom-20',
+        'right-column-4',
+        'rounded-full',
+        'bg-primary',
+      ]),
+    );
     expect(wrapper.findComponent(Plus).exists()).toBe(true);
 
     await wrapper.get('button').trigger('click');

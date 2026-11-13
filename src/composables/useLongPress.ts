@@ -52,8 +52,8 @@ export function useLongPress<T>(options: LongPressOptions<T>) {
   }
 
   // A touch keeps sending its moves and its release to the row it pressed, a mouse does not: moved
-  // off the row, it sends them elsewhere. So for
-  // as long as the press runs its pointer is followed on the window too
+  // off the row, it sends them elsewhere. So for as long as the press runs its pointer is followed
+  // on the window too
   function startPress(item: T, event: PointerEvent) {
     if (!event.isPrimary) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;

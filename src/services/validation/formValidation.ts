@@ -26,8 +26,8 @@ export function collectErrors(schema: GenericSchema, value: unknown): FormErrors
 
 /**
  * Brings the first invalid field into view. The app never shows two forms at once — a drawer is
- * modal — so the first `.p-invalid` in the document
- * belongs to the form the user has just tried to save.
+ * modal — so the first `.p-invalid` in the document belongs to the form the user has just tried
+ * to save.
  */
 export function focusFirstInvalidField() {
   // A rule that belongs to the whole form marks no field, so its message is the fallback target
