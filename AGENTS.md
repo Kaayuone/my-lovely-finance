@@ -21,13 +21,14 @@ Capacitor. Хранение данных — локальный SQLite. Сети
 - **Pinia** — состояние (setup-style сторы)
 - **Vue Router** — навигация
 - **PrimeVue 4** (тема Aura) + **TailwindCSS v4** + `tailwindcss-primeui`
-- **Capacitor 8** + `@capacitor-community/sqlite` (нативно) / `jeep-sqlite` + `sql.js` (веб)
+- **Capacitor 8** + `@capacitor-community/sqlite` (нативно) / `jeep-sqlite` + `sql.js` (веб);
+  плагины `@capacitor/keyboard` и `@capacitor/haptics`
+- **valibot** — валидация форм; **vue-virtual-scroller** — длинные списки
 - **@lucide/vue** — иконки
 
-Согласованы как часть стека, но ставятся с первой задачей, которой нужны: `valibot` (валидация
-форм), `vue-virtual-scroller` (длинные списки), плагины Capacitor из MLC (`@capacitor/keyboard`,
-`@capacitor/haptics`, `@capacitor/local-notifications`, `@capacitor/filesystem`, `@capacitor/share`).
-Любая другая зависимость — только по согласованию.
+Согласованы как часть стека, но ставятся с первой задачей, которой нужны, плагины Capacitor из MLC
+`@capacitor/local-notifications`, `@capacitor/filesystem` и `@capacitor/share`. Любая другая
+зависимость — только по согласованию.
 
 ## Платформа
 
@@ -38,7 +39,7 @@ Capacitor. Хранение данных — локальный SQLite. Сети
 - **Клавиатурной доступности списков не делаем.** Строки списков — `div role="button"` с
   обработчиком тапа, без `tabindex` и без `@keydown` на Enter и пробел. Команды строки, которым не
   нужна форма, открывает долгое нажатие и шторка команд, а не контекстное меню (`useLongPress` и
-  `RowActionsSheet` переносятся из MLC с первым таким списком).
+  `RowActionsSheet`).
 - Hover-состояния, горячие клавиши, контекстное меню правой кнопкой и раскладки под альбомную
   ориентацию — вне задач. Книжная закреплена в манифесте, но планшет на Android 16+ этого не
   соблюдает: в альбомной у него колонка контента стоит по центру, и требование к ней одно — ничего
@@ -66,8 +67,9 @@ Capacitor. Хранение данных — локальный SQLite. Сети
 
 - `entities/<name>/` — слой данных по сущности: `*.repository.ts`, `*.mapper.ts`, `*.types.ts`
 - `stores/` — Pinia-сторы (`settingsStore.ts`)
-- `features/<FeatureDialog>/` — самостоятельные фичи (диалоги/формы), `types.ts`; подкомпоненты
-  в `components/` — если их 3 и больше, иначе рядом с диалогом
+- `features/<FeatureDialog>/` — самостоятельные фичи (диалоги/формы: `AddAccountDialog`,
+  `AddOperationDialog`), `types.ts`; подкомпоненты в `components/` — если их 3 и больше, иначе
+  рядом с диалогом
 - `pages/<name>/` — страницы-роуты, компоненты с префиксом `The*` (`TheInbox.vue`); оболочка —
   `pages/layouts/`
 - `components/` — переиспользуемые UI-компоненты (`EmptyState.vue`); группу родственных компонентов
@@ -75,11 +77,13 @@ Capacitor. Хранение данных — локальный SQLite. Сети
 - `database/` — инициализация и доступ к SQLite (`database.ts`, `transaction.ts`, `migrations/`)
 - `services/<name>/` — инфраструктурные сервисы: `<name>.service.ts`, `<name>.types.ts`,
   `constants.ts`, `index.ts`; composables рядом (`useXxx.ts`)
+- `composables/` — общие composables без привязки к одному компоненту (`useLongPress`,
+  `usePointerDrag`)
+- `utils/` — общие утилиты: деньги, время операции, скроллер (`money.ts`, `operationTime.ts`,
+  `scroller.ts`)
 - `types/` — общие типы: union-типы предметной области
 - `constants/` — глобальные константы приложения (`APP_VERSION`); один файл на предметную область
 - `router/`, `assets/`
-
-Из перечисленных каталогов ещё нет только `features/` — он заводится с первой фичей.
 
 ## Соглашения
 
@@ -94,6 +98,9 @@ Capacitor. Хранение данных — локальный SQLite. Сети
   Руками в Gradle версию не правим.
 - Деньги — данные пользователя: ошибка в сумме, валюте или знаке хуже падения. Суммы — целые со
   знаком в минимальных единицах валюты ([ADR-0005](docs/adr/0005-money-as-signed-minor-units-moment-with-offset-computed-balance.md)).
+  Текст в сумму и обратно — только `parseAmount`, `formatMoney` и `toDecimalString` из
+  `@/utils/money`: ни `parseFloat`, ни `* 100`, ни `InputNumber` над суммами
+  ([`form-validation.md`](docs/conventions/form-validation.md#поле-суммы)).
 
 ## Core workflow
 

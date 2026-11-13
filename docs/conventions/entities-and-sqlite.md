@@ -2,7 +2,7 @@
 
 > **Статус:** действует
 >
-> **Сверен:** 12 ноября 2026 — сущности `account`, `accountCard`, `category`, `operation`, `draft`, общие `entities/types.ts` и `update-builder.ts`, API `@/database`, миграции v1 и v2 и харнесс `sqliteTestDatabase.ts`; схема БД 2
+> **Сверен:** 13 ноября 2026 — сущности `account`, `accountCard`, `category`, `operation`, `draft` (в том числе `insertAccountWithCards`, `updateAccountWithCards` и `*InTransaction` карт), общие `entities/types.ts` и `update-builder.ts`, API `@/database`, миграции v1 и v2 и харнесс `sqliteTestDatabase.ts`; схема БД 2
 >
 > **Пересмотр:** при изменении контракта репозиториев, мапперов, `database.ts`, очереди транзакций или runner'а миграций
 
@@ -48,6 +48,13 @@
 - Все мутации идут внутри `runInTransaction` (он вызывает `updateOnWeb` сам). Одиночная запись —
   тоже транзакция: соединение держит одну транзакцию, и запись мимо очереди, пришедшая посреди
   чужого сохранения, разрывает его. Внутри каждый `executeSql` получает `transaction = false`.
+- Запись, которая должна пройти вместе с записью другой сущности (счёт и его карты), — функция
+  репозитория главной сущности в одной `runInTransaction`. Чужую часть она пишет через
+  `*InTransaction`-функцию того репозитория: она не открывает транзакцию, а присоединяется к
+  открытой (`executeSql(..., false)`), и экспортируется только когда она нужна другому репозиторию.
+  Публичная одиночная запись той же сущности — `runInTransaction(() => xInTransaction(...))`. Всё
+  или ничего: упавшая вторая часть откатывает первую, и форма не остаётся над наполовину
+  сохранённым объектом.
 - `insert*` возвращает `result.changes?.lastId`; если `id` нет — `throw new Error('Failed to get the ID of the new record')` (сообщения об ошибках — на английском).
   Вставка порции, которая отбрасывает уже записанное (`insertDrafts`), возвращает число новых строк —
   сумму `result.changes?.changes`; отбрасывает она только конфликт своего ключа
@@ -68,6 +75,42 @@ export async function getAccounts(): Promise<Account[]> {
   return (res ?? []).map(rowToAccount);
 }
 ```
+
+Счёт с картами — образец записи двух сущностей одной транзакцией (`account.repository.ts` и
+`accountCard.repository.ts`):
+
+```typescript
+// accountCard.repository.ts: for a caller already inside `runInTransaction`
+export async function insertAccountCardInTransaction(card: NewAccountCard): Promise<number> {
+  const row = newAccountCardToRow(card);
+  const result = await executeSql(
+    'INSERT INTO account_cards (account_id, last_digits) VALUES (?, ?)',
+    [row.account_id, row.last_digits],
+    false,
+  );
+  const id = result.changes?.lastId;
+  if (!id) throw new Error('Failed to get the ID of the new record');
+  return id;
+}
+
+// account.repository.ts: the account and its cards commit together or not at all
+export async function insertAccountWithCards(
+  account: NewAccount,
+  lastDigits: readonly string[],
+): Promise<number> {
+  return runInTransaction(async () => {
+    const id = await insertAccountInTransaction(account);
+    for (const digits of lastDigits) {
+      await insertAccountCardInTransaction({ accountId: id, lastDigits: digits });
+    }
+    return id;
+  });
+}
+```
+
+`updateAccountWithCards` идёт тем же путём: поля счёта, снятые карты и добавленные — одна
+транзакция, снятые карты раньше добавляемых (иначе возврат тех же цифр нарушил бы `UNIQUE` пары
+`(account_id, last_digits)`).
 
 ## Слой базы данных (SQLite)
 
