@@ -23,7 +23,7 @@ export function dayLabel(day: string, today: string): string {
 }
 
 /**
- * What a row of the feed shows (D12). Every amount is formatted in the currency of the account it
+ * What a row of the feed shows. Every amount is formatted in the currency of the account it
  * belongs to, and an account not loaded yet has no currency to format in: its amount stays empty
  * rather than shown in a guessed one.
  */

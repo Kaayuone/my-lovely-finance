@@ -18,7 +18,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 
 import type { Account } from '@/entities/account/account.types';
-import type { AccountAction } from './constants';
+import type { AccountAction } from './types';
 
 import { ACTIVE_ACCOUNT_ACTIONS, ARCHIVED_ACCOUNT_ACTIONS } from './constants';
 
@@ -125,7 +125,7 @@ async function setArchived(account: Account, archived: boolean) {
   await loadAccounts();
 }
 
-// Only an account without operations is deleted; one with them is offered the archive (D6)
+// Only an account without operations is deleted; one with them is offered the archive
 async function askToDelete(account: Account) {
   let operationsCount: number;
   try {

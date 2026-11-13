@@ -1,7 +1,7 @@
 import type { Operation } from '@/entities/operation/operation.types';
 
 // What a row of the feed shows. Every amount is formatted in the currency of the account it belongs
-// to (D12): a transfer debits in the source account's currency and credits in the target's
+// to: a transfer debits in the source account's currency and credits in the target's
 export type OperationRowView = {
   operation: Operation;
   // The category («Продукты»), «Без категории», «Перевод» or «Корректировка»

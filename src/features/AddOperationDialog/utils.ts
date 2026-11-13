@@ -11,7 +11,7 @@ import type {
 import type { OperationTime } from '@/types/finance';
 import type { OperationForm, OperationFormContext, OperationFormKind } from './types';
 
-// A new operation is an expense from the first active account, now (A8)
+// A new operation is an expense from the first active account, now
 export function newOperationForm(
   accounts: readonly Account[],
   now: Date = new Date(),
@@ -37,7 +37,7 @@ export function newOperationForm(
 /**
  * The form of a saved operation. Every amount is shown in the currency of its own account: the
  * exponent is never assumed, or a KWD amount read as BYN would grow tenfold. An adjustment has no
- * form (A1), and an account missing from the map cannot give the currency, so both throw.
+ * form, and an account missing from the map cannot give the currency, so both throw.
  */
 export function operationToForm(
   operation: Operation,

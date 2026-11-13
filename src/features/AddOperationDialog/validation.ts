@@ -25,7 +25,7 @@ export function getOperationFormSchema(
     dateTime: requiredDate('Укажите дату'),
   };
 
-  // A manually entered expense or income always names its category (A7)
+  // A manually entered expense or income always names its category
   if (form.kind !== 'transfer') {
     return object({ ...commonEntries, categoryId: requiredOption<number>('Выберите категорию') });
   }

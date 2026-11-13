@@ -56,7 +56,7 @@ watch(
 );
 
 // The account and its cards are written in one transaction, so a failed save leaves nothing behind
-// and the form stays open to try again (D5)
+// and the form stays open to try again
 async function saveAccount() {
   // A second tap while the first one is still saving would insert the account twice
   if (saving.value) return;

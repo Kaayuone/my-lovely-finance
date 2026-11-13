@@ -25,7 +25,7 @@ export const OPERATION_ACTIONS: RowAction<OperationAction>[] = [
   { value: 'delete', label: 'Удалить', icon: Trash2, danger: true },
 ];
 
-// A balance adjustment has no form yet (A1): it can only be deleted
+// A balance adjustment has no form yet: it can only be deleted
 export const ADJUSTMENT_ACTIONS: RowAction<OperationAction>[] = [
   { value: 'delete', label: 'Удалить', icon: Trash2, danger: true },
 ];

@@ -86,7 +86,7 @@ const operationEntries = computed(() => withDayHeadings(operationRows.value, tod
 // Which empty state to show depends on the accounts too, so it waits for both lists
 const isLoading = computed(() => operationsLoading.value || accountsLoading.value);
 const hasActiveAccount = computed(() => accounts.value.some(account => !account.isArchived));
-// A balance adjustment has no form to edit it in (A1)
+// A balance adjustment has no form to edit it in
 const rowActions = computed(() =>
   actionRow.value?.operation.kind === 'adjustment' ? ADJUSTMENT_ACTIONS : OPERATION_ACTIONS,
 );
