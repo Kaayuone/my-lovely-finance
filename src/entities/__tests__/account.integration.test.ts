@@ -9,6 +9,7 @@ import {
   updateOnWeb,
 } from '@/database/__tests__/sqliteTestDatabase';
 import type { Account, NewAccount } from '@/entities/account/account.types';
+import type { AccountCard } from '@/entities/accountCard/accountCard.types';
 import type { OperationKind } from '@/types/finance';
 
 vi.mock('@/database', async () => import('@/database/__tests__/sqliteTestDatabase'));
@@ -74,6 +75,20 @@ async function getAccount(id: number): Promise<Account | undefined> {
 
 async function getAccountIds(): Promise<number[]> {
   return (await accountRepository.getAccounts()).map(account => account.id);
+}
+
+async function getCardDigits(accountId: number): Promise<string[]> {
+  return (await accountCardRepository.getAccountCards())
+    .filter(card => card.accountId === accountId)
+    .map(card => card.lastDigits);
+}
+
+async function getCard(accountId: number, lastDigits: string): Promise<AccountCard> {
+  const card = (await accountCardRepository.getAccountCards()).find(
+    candidate => candidate.accountId === accountId && candidate.lastDigits === lastDigits,
+  );
+  if (!card) throw new Error(`Card ${lastDigits} of account ${accountId} not found`);
+  return card;
 }
 
 describe('account repositories with SQLite', () => {
@@ -284,6 +299,8 @@ describe('account repositories with SQLite', () => {
     expect(await accountCardRepository.findAccountIdsByLastDigits('1234')).toEqual([bynId, usdId]);
     expect(await accountCardRepository.findAccountIdsByLastDigits('5678')).toEqual([bynId]);
     expect(await accountCardRepository.findAccountIdsByLastDigits('0000')).toEqual([]);
+    // Every write went through the transaction queue, which saves the web store after a commit
+    expect(updateOnWeb).toHaveBeenCalledTimes(5);
   });
 
   it('refuses the same card twice on one account and deletes a card', async () => {
@@ -301,5 +318,102 @@ describe('account repositories with SQLite', () => {
 
     await accountCardRepository.deleteAccountCard(cardId);
     expect(await accountCardRepository.findAccountIdsByLastDigits('1234')).toEqual([usdId]);
+  });
+
+  it('creates an account with its cards in one transaction, or with none', async () => {
+    const bynId = await accountRepository.insertAccountWithCards(BYN_CARD, ['1234', '5678']);
+    expect(updateOnWeb).toHaveBeenCalledOnce();
+    const cashId = await accountRepository.insertAccountWithCards(RUB_CASH, []);
+    expect(updateOnWeb).toHaveBeenCalledTimes(2);
+
+    expect(await accountRepository.getAccounts()).toEqual([
+      { ...BYN_CARD, id: bynId, isArchived: false, sortOrder: 1 },
+      { ...RUB_CASH, id: cashId, isArchived: false, sortOrder: 2 },
+    ]);
+    expect(await getCardDigits(bynId)).toEqual(['1234', '5678']);
+    expect(await getCardDigits(cashId)).toEqual([]);
+  });
+
+  it.each([
+    { refusal: 'a card that is not four digits', lastDigits: ['1234', '12a4'], error: 'CHECK' },
+    { refusal: 'the same card twice', lastDigits: ['1234', '1234'], error: 'UNIQUE' },
+  ])('stores neither the account nor its cards on $refusal', async ({ lastDigits, error }) => {
+    await expect(accountRepository.insertAccountWithCards(BYN_CARD, lastDigits)).rejects.toThrow(
+      `${error} constraint failed`,
+    );
+
+    expect(await accountRepository.getAccounts()).toEqual([]);
+    expect(await accountCardRepository.getAccountCards()).toEqual([]);
+    expect(updateOnWeb).not.toHaveBeenCalled();
+
+    // The rollback released the queue, and the account it dropped took no place in the list
+    const id = await accountRepository.insertAccountWithCards(BYN_CARD, ['1234']);
+    expect(await accountRepository.getAccounts()).toEqual([
+      { ...BYN_CARD, id, isArchived: false, sortOrder: 1 },
+    ]);
+    expect(await getCardDigits(id)).toEqual(['1234']);
+  });
+
+  it('changes the fields and the cards of an account in one transaction', async () => {
+    const id = await accountRepository.insertAccountWithCards(BYN_CARD, ['1234', '5678']);
+    const otherId = await accountRepository.insertAccountWithCards(USD_CARD, ['1234']);
+    const removedIds = [(await getCard(id, '1234')).id, (await getCard(id, '5678')).id];
+    updateOnWeb.mockClear();
+
+    // The digits of a removed card come back in the same save
+    await accountRepository.updateAccountWithCards(
+      id,
+      { name: 'Зарплатная', bankPackage: null },
+      { add: ['1234', '9999'], removeIds: removedIds },
+    );
+
+    expect(updateOnWeb).toHaveBeenCalledOnce();
+    expect(await getAccount(id)).toEqual({
+      ...BYN_CARD,
+      id,
+      name: 'Зарплатная',
+      bankPackage: null,
+      isArchived: false,
+      sortOrder: 1,
+    });
+    expect(await getCardDigits(id)).toEqual(['1234', '9999']);
+    expect(await getCardDigits(otherId)).toEqual(['1234']);
+
+    // No field to change runs no UPDATE, and the cards still change
+    await accountRepository.updateAccountWithCards(id, {}, { add: ['0000'], removeIds: [] });
+
+    expect(updateOnWeb).toHaveBeenCalledTimes(2);
+    expect(await getAccount(id)).toEqual(expect.objectContaining({ name: 'Зарплатная' }));
+    expect(await getCardDigits(id)).toEqual(['1234', '9999', '0000']);
+  });
+
+  it('leaves a card of another account in place when its id comes to be removed', async () => {
+    const id = await accountRepository.insertAccountWithCards(BYN_CARD, ['1111']);
+    const otherId = await accountRepository.insertAccountWithCards(USD_CARD, ['2222']);
+    const otherCard = await getCard(otherId, '2222');
+
+    await accountRepository.updateAccountWithCards(id, {}, { add: [], removeIds: [otherCard.id] });
+
+    expect(await getCardDigits(id)).toEqual(['1111']);
+    expect(await getCardDigits(otherId)).toEqual(['2222']);
+  });
+
+  it('rolls the fields and the removed cards back when an added card is refused', async () => {
+    const id = await accountRepository.insertAccountWithCards(BYN_CARD, ['1234', '5678']);
+    const cards = await accountCardRepository.getAccountCards();
+    const removed = await getCard(id, '1234');
+    updateOnWeb.mockClear();
+
+    await expect(
+      accountRepository.updateAccountWithCards(
+        id,
+        { name: 'Зарплатная', openingBalanceMinor: 0 },
+        { add: ['0000', '5678'], removeIds: [removed.id] },
+      ),
+    ).rejects.toThrow('UNIQUE constraint failed');
+
+    expect(updateOnWeb).not.toHaveBeenCalled();
+    expect(await getAccount(id)).toEqual({ ...BYN_CARD, id, isArchived: false, sortOrder: 1 });
+    expect(await accountCardRepository.getAccountCards()).toEqual(cards);
   });
 });

@@ -40,10 +40,32 @@ export const useAccountStore = defineStore('accounts', () => {
     }
   }
 
+  async function addAccountWithCards(account: NewAccount, lastDigits: readonly string[]) {
+    loading.value = true;
+    try {
+      return await accountRepository.insertAccountWithCards(account, lastDigits);
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function updateAccount(id: number, changes: AccountChanges) {
     loading.value = true;
     try {
       await accountRepository.updateAccount(id, changes);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function updateAccountWithCards(
+    id: number,
+    changes: AccountChanges,
+    cards: { add: readonly string[]; removeIds: readonly number[] },
+  ) {
+    loading.value = true;
+    try {
+      await accountRepository.updateAccountWithCards(id, changes, cards);
     } finally {
       loading.value = false;
     }
@@ -62,6 +84,15 @@ export const useAccountStore = defineStore('accounts', () => {
     loading.value = true;
     try {
       await accountRepository.deleteAccount(id);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function countAccountOperations(id: number) {
+    loading.value = true;
+    try {
+      return await accountRepository.countAccountOperations(id);
     } finally {
       loading.value = false;
     }
@@ -92,9 +123,12 @@ export const useAccountStore = defineStore('accounts', () => {
     loading,
     loadAccounts,
     addAccount,
+    addAccountWithCards,
     updateAccount,
+    updateAccountWithCards,
     setAccountArchived,
     deleteAccount,
+    countAccountOperations,
     addCard,
     removeCard,
   };

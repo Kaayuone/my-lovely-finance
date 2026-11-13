@@ -9,9 +9,12 @@ const accountRepository = vi.hoisted(() => ({
   getAccounts: vi.fn(),
   getAccountBalances: vi.fn(),
   insertAccount: vi.fn(),
+  insertAccountWithCards: vi.fn(),
   updateAccount: vi.fn(),
+  updateAccountWithCards: vi.fn(),
   setAccountArchived: vi.fn(),
   deleteAccount: vi.fn(),
+  countAccountOperations: vi.fn(),
 }));
 const accountCardRepository = vi.hoisted(() => ({
   getAccountCards: vi.fn(),
@@ -118,12 +121,20 @@ describe('accountStore', () => {
     },
   );
 
-  const mutations = [
+  const actions = [
     {
       name: 'addAccount',
       invoke: (store: ReturnType<typeof useAccountStore>) => store.addAccount(newAccount()),
       repository: accountRepository.insertAccount,
       args: [newAccount()],
+      result: 12,
+    },
+    {
+      name: 'addAccountWithCards',
+      invoke: (store: ReturnType<typeof useAccountStore>) =>
+        store.addAccountWithCards(newAccount(), ['1234', '5678']),
+      repository: accountRepository.insertAccountWithCards,
+      args: [newAccount(), ['1234', '5678']],
       result: 12,
     },
     {
@@ -140,6 +151,18 @@ describe('accountStore', () => {
       result: undefined,
     },
     {
+      name: 'updateAccountWithCards',
+      invoke: (store: ReturnType<typeof useAccountStore>) =>
+        store.updateAccountWithCards(
+          7,
+          { name: 'Новый', bankPackage: null },
+          { add: ['0042', '0043'], removeIds: [3] },
+        ),
+      repository: accountRepository.updateAccountWithCards,
+      args: [7, { name: 'Новый', bankPackage: null }, { add: ['0042', '0043'], removeIds: [3] }],
+      result: undefined,
+    },
+    {
       name: 'setAccountArchived',
       invoke: (store: ReturnType<typeof useAccountStore>) => store.setAccountArchived(7, true),
       repository: accountRepository.setAccountArchived,
@@ -152,6 +175,13 @@ describe('accountStore', () => {
       repository: accountRepository.deleteAccount,
       args: [7],
       result: undefined,
+    },
+    {
+      name: 'countAccountOperations',
+      invoke: (store: ReturnType<typeof useAccountStore>) => store.countAccountOperations(7),
+      repository: accountRepository.countAccountOperations,
+      args: [7],
+      result: 4,
     },
     {
       name: 'addCard',
@@ -170,19 +200,19 @@ describe('accountStore', () => {
     },
   ];
 
-  it.each(mutations)(
+  it.each(actions)(
     '$name forwards arguments and keeps loaded data without a reload',
-    async mutation => {
+    async action => {
       const store = useAccountStore();
       await store.loadAccounts();
       const pending = createDeferred<number | undefined>();
-      mutation.repository.mockReturnValueOnce(pending.promise);
+      action.repository.mockReturnValueOnce(pending.promise);
 
-      const write = mutation.invoke(store);
+      const write = action.invoke(store);
       expect(store.loading).toBe(true);
-      expect(mutation.repository).toHaveBeenCalledExactlyOnceWith(...mutation.args);
-      pending.resolve(mutation.result);
-      await expect(write).resolves.toBe(mutation.result);
+      expect(action.repository).toHaveBeenCalledExactlyOnceWith(...action.args);
+      pending.resolve(action.result);
+      await expect(write).resolves.toBe(action.result);
 
       expect(store.loading).toBe(false);
       expect(store.accounts).toEqual(accounts());
@@ -199,12 +229,12 @@ describe('accountStore', () => {
     },
   );
 
-  it.each(mutations)('$name propagates repository errors and releases loading', async mutation => {
+  it.each(actions)('$name propagates repository errors and releases loading', async action => {
     const store = useAccountStore();
     const error = new Error('Write failed');
-    mutation.repository.mockRejectedValueOnce(error);
+    action.repository.mockRejectedValueOnce(error);
 
-    await expect(mutation.invoke(store)).rejects.toBe(error);
+    await expect(action.invoke(store)).rejects.toBe(error);
 
     expect(store.loading).toBe(false);
   });

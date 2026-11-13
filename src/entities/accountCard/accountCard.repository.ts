@@ -7,19 +7,32 @@ export async function getAccountCards(): Promise<AccountCard[]> {
   return (res ?? []).map(rowToAccountCard);
 }
 
-export async function insertAccountCard(card: NewAccountCard): Promise<number> {
+// For a caller already inside `runInTransaction`: the insert joins its transaction
+export async function insertAccountCardInTransaction(card: NewAccountCard): Promise<number> {
   const row = newAccountCardToRow(card);
 
-  return runInTransaction(async () => {
-    const result = await executeSql(
-      'INSERT INTO account_cards (account_id, last_digits) VALUES (?, ?)',
-      [row.account_id, row.last_digits],
-      false,
-    );
-    const id = result.changes?.lastId;
-    if (!id) throw new Error('Failed to get the ID of the new record');
-    return id;
-  });
+  const result = await executeSql(
+    'INSERT INTO account_cards (account_id, last_digits) VALUES (?, ?)',
+    [row.account_id, row.last_digits],
+    false,
+  );
+  const id = result.changes?.lastId;
+  if (!id) throw new Error('Failed to get the ID of the new record');
+  return id;
+}
+
+export async function insertAccountCard(card: NewAccountCard): Promise<number> {
+  return runInTransaction(() => insertAccountCardInTransaction(card));
+}
+
+// For a caller already inside `runInTransaction`. Removes the card only when it belongs to that
+// account: the id of a card of another account changes nothing.
+export async function deleteAccountCardInTransaction(id: number, accountId: number): Promise<void> {
+  await executeSql(
+    'DELETE FROM account_cards WHERE id = ? AND account_id = ?',
+    [id, accountId],
+    false,
+  );
 }
 
 export async function deleteAccountCard(id: number): Promise<void> {

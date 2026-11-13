@@ -1,4 +1,8 @@
 import { executeSql, querySql, runInTransaction } from '@/database';
+import {
+  deleteAccountCardInTransaction,
+  insertAccountCardInTransaction,
+} from '@/entities/accountCard/accountCard.repository';
 import { buildUpdateAssignments } from '@/entities/update-builder';
 import { newAccountToRow, rowToAccount, rowToAccountBalance } from './account.mapper';
 import type {
@@ -18,40 +22,84 @@ export async function getAccounts(): Promise<Account[]> {
 }
 
 // A new account goes to the end of the list, past the archived ones too
-export async function insertAccount(account: NewAccount): Promise<number> {
+async function insertAccountInTransaction(account: NewAccount): Promise<number> {
   const row = newAccountToRow(account);
 
+  const result = await executeSql(
+    `INSERT INTO accounts (name, type, currency, opening_balance_minor, bank_package, sort_order)
+      VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM accounts))`,
+    [row.name, row.type, row.currency, row.opening_balance_minor, row.bank_package],
+    false,
+  );
+  const id = result.changes?.lastId;
+  if (!id) throw new Error('Failed to get the ID of the new record');
+  return id;
+}
+
+export async function insertAccount(account: NewAccount): Promise<number> {
+  return runInTransaction(() => insertAccountInTransaction(account));
+}
+
+// The account and its cards commit together or not at all. Saved one by one, a refused card would
+// leave the account saved and the form open, and the next "Save" would create a second account.
+export async function insertAccountWithCards(
+  account: NewAccount,
+  lastDigits: readonly string[],
+): Promise<number> {
   return runInTransaction(async () => {
-    const result = await executeSql(
-      `INSERT INTO accounts (name, type, currency, opening_balance_minor, bank_package, sort_order)
-        VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM accounts))`,
-      [row.name, row.type, row.currency, row.opening_balance_minor, row.bank_package],
-      false,
-    );
-    const id = result.changes?.lastId;
-    if (!id) throw new Error('Failed to get the ID of the new record');
+    const id = await insertAccountInTransaction(account);
+    for (const digits of lastDigits) {
+      await insertAccountCardInTransaction({ accountId: id, lastDigits: digits });
+    }
     return id;
   });
 }
 
 // The type and the currency are fixed once the account exists: its operations are in that currency
-export async function updateAccount(id: number, changes: AccountChanges): Promise<void> {
-  const assignments = buildUpdateAssignments([
+function buildAccountAssignments(changes: AccountChanges) {
+  return buildUpdateAssignments([
     { column: 'name', value: changes.name },
     { column: 'opening_balance_minor', value: changes.openingBalanceMinor },
     { column: 'bank_package', value: changes.bankPackage },
     { column: 'sort_order', value: changes.sortOrder },
   ]);
+}
 
+async function updateAccountInTransaction(id: number, changes: AccountChanges): Promise<void> {
+  const assignments = buildAccountAssignments(changes);
   if (!assignments) return;
 
-  await runInTransaction(() =>
-    executeSql(
-      `UPDATE accounts SET ${assignments.sets.join(', ')} WHERE id = ?`,
-      [...assignments.values, id],
-      false,
-    ),
+  await executeSql(
+    `UPDATE accounts SET ${assignments.sets.join(', ')} WHERE id = ?`,
+    [...assignments.values, id],
+    false,
   );
+}
+
+// Nothing to change opens no transaction
+export async function updateAccount(id: number, changes: AccountChanges): Promise<void> {
+  if (!buildAccountAssignments(changes)) return;
+  await runInTransaction(() => updateAccountInTransaction(id, changes));
+}
+
+// The fields and the cards of the account commit together, for the same reason as
+// `insertAccountWithCards`: the next "Save" after a failure halfway would repeat what was written.
+// The removals go before the additions, so removing a card and adding its digits back in one save
+// does not break the UNIQUE of the account's cards.
+export async function updateAccountWithCards(
+  id: number,
+  changes: AccountChanges,
+  cards: { add: readonly string[]; removeIds: readonly number[] },
+): Promise<void> {
+  await runInTransaction(async () => {
+    await updateAccountInTransaction(id, changes);
+    for (const cardId of cards.removeIds) {
+      await deleteAccountCardInTransaction(cardId, id);
+    }
+    for (const lastDigits of cards.add) {
+      await insertAccountCardInTransaction({ accountId: id, lastDigits });
+    }
+  });
 }
 
 export async function setAccountArchived(id: number, archived: boolean): Promise<void> {
