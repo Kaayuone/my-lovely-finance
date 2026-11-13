@@ -17,8 +17,10 @@ import { useCategoryStore } from '@/stores/categoryStore';
 import { useOperationStore } from '@/stores/operationStore';
 import { useAppToast } from '@/services/feedback';
 
+import { registerAppStateListener } from '@/services/appState';
+
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import { currentOperationTime, operationLocalDay } from '@/utils/operationTime';
 import { reloadPinningTop } from '@/utils/scroller';
 import { toOperationRowView, withDayHeadings } from './utils';
@@ -42,13 +44,16 @@ const operationToDelete = ref<Operation | null>(null);
 // Raised from the confirmed deletion to the end of the reload after it: no sheet or form opens on
 // a list that is about to change
 const deleting = ref(false);
-// The day «Сегодня» and «Вчера» count from; read again with every load of the list, so a feed left
-// open overnight moves on to the new day with its next change
+// The day «Сегодня» and «Вчера» count from. The page is mounted anew with every opening of its tab,
+// but Android keeps the app in memory overnight: the day is read again on every return to the app
+// and with every load of the list, and only the headings change, nothing is read from the database
 const today = ref(currentDay());
 
 // The scroller reports the end of the list on every frame it stays in view: a portion that failed
 // is asked for again only with the next read of the list, not with a toast per frame
 let isLoadMoreFailed = false;
+let removeAppStateListener: (() => void) | undefined;
+let isUnmounted = false;
 
 const scrollerRef = useTemplateRef<ScrollerHandle<OperationEntry>>('scrollerRef');
 
@@ -96,7 +101,27 @@ onMounted(() => {
   void loadAccounts();
   void loadCategories();
   void loadOperations();
+  void listenForReturnToApp();
 });
+
+onUnmounted(() => {
+  isUnmounted = true;
+  removeAppStateListener?.();
+});
+
+// The headings are a convenience: without the listener the day still moves on with the next load
+async function listenForReturnToApp() {
+  try {
+    const remove = await registerAppStateListener(refreshToday);
+    if (isUnmounted) {
+      remove();
+      return;
+    }
+    removeAppStateListener = remove;
+  } catch (error) {
+    console.error('Failed to listen for the return to the app', error);
+  }
+}
 
 async function loadAccounts() {
   try {
@@ -115,7 +140,7 @@ async function loadCategories() {
 }
 
 async function loadOperations() {
-  today.value = currentDay();
+  refreshToday();
   isLoadMoreFailed = false;
   try {
     await operationStore.loadOperations();
@@ -159,6 +184,11 @@ async function deleteOperation(operation: Operation) {
 
 function currentDay() {
   return operationLocalDay(currentOperationTime());
+}
+
+// The same day assigned again changes nothing, so the feed is laid out anew only on a new day
+function refreshToday() {
+  today.value = currentDay();
 }
 
 function findRow(id: number) {
@@ -212,8 +242,8 @@ function openAccounts() {
 
 <template>
   <!-- An item not measured yet counts as `min-item-size`, so it is the average item: a row is
-       52–56 px (70 with a fee note), the separator under it 9 and a day heading 32,
-       (54 + 9) / 2 ≈ 32. `emit-update` is what makes the scroller report `scroll-end`, when the
+       52 px, 54 from w400 (70 and 72 with a fee note), the separator under it 9 and a day heading
+       32, (54 + 9) / 2 ≈ 32. `emit-update` is what makes the scroller report `scroll-end`, when the
        last item comes into view: the next portion of the feed is read then -->
   <DynamicScroller
     ref="scrollerRef"
