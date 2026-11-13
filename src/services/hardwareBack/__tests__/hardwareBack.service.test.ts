@@ -264,12 +264,14 @@ describe('hardwareBack.service', () => {
       },
     );
 
-    it('gives a tie to a handler registered after the open overlay handler', async () => {
+    it('leaves an open overlay to a handler above it', async () => {
       const onBack = vi.fn();
+      // This handler sits above the overlay; at an equal priority of 350, the overlay handler
+      // registered later by listen() would win the tie.
+      registerHandler(HARDWARE_BACK_PRIORITY_OVERLAY + 1, () => true, onBack);
       const overlayKeydown = openOverlay();
 
       await listen({ currentRoute: { value: { name: 'operations' } }, replace: vi.fn() } as never);
-      registerHandler(HARDWARE_BACK_PRIORITY_OVERLAY, () => true, onBack);
 
       expect(dispatchHardwareBack()).toBe(true);
       expect(onBack).toHaveBeenCalledOnce();
