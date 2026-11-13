@@ -33,6 +33,9 @@ const inputAttrs = computed(() => {
   delete rest.class;
   return rest;
 });
+// `disabled` reaches the input with the other attributes, so the sign button reads it here; an empty
+// string is the bare attribute, as Vue reads a boolean one
+const isDisabled = computed(() => attrs.disabled === '' || Boolean(attrs.disabled));
 // The end of the field holds the currency code (up to 2rem) and the sign button (2rem); the padding
 // covers them and their insets with 0.5rem to spare, so typed digits never run under them
 const inputPt = computed(() => {
@@ -72,8 +75,9 @@ function toggleSign() {
         <span v-if="currency" class="text-muted-color text-sm">{{ currency }}</span>
         <button
           v-if="signed"
+          :disabled="isDisabled"
           type="button"
-          class="text-primary pointer-events-auto flex size-8 items-center justify-center rounded-full text-lg leading-none"
+          class="text-primary disabled:text-muted-color pointer-events-auto flex size-8 items-center justify-center rounded-full text-lg leading-none"
           aria-label="Сменить знак"
           @mousedown.prevent
           @click="toggleSign"

@@ -73,6 +73,8 @@ describe('InputAmountField', () => {
   it('puts a leading minus on and takes it off with the sign button', async () => {
     const wrapper = mountField('12,5', { signed: true });
 
+    expect(signButton(wrapper).attributes('disabled')).toBeUndefined();
+
     await signButton(wrapper).trigger('click');
     expect(wrapper.get('input').element.value).toBe('-12,5');
 
@@ -93,6 +95,22 @@ describe('InputAmountField', () => {
     await signButton(wrapper).trigger('click');
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[after]]);
+  });
+
+  it.each([true, ''])('keeps the sign of a disabled field (disabled: %j)', async disabled => {
+    const wrapper = mount(InputAmountField, {
+      props: { id: 'amount', label: 'Сумма', currency: 'BYN', modelValue: '12,5', signed: true },
+      attrs: { disabled },
+      global: { stubs: { FloatLabel: FloatLabelStub, InputText: InputTextStub } },
+    });
+    const button = wrapper.get('button[aria-label="Сменить знак"]');
+
+    expect(wrapper.get('input').attributes('disabled')).toBeDefined();
+    expect(button.attributes('disabled')).toBeDefined();
+
+    await button.trigger('click');
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
   });
 
   it('has no sign button for an amount that cannot be negative', () => {
