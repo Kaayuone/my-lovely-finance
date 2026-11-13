@@ -98,6 +98,10 @@ const cardDigitsError = computed(() =>
         <Select
           v-model="form.bankPackage"
           :options="bankAppOptions"
+          :pt="{
+            overlay: { class: 'max-w-[calc(100vw-2rem)]' },
+            option: { class: 'whitespace-normal wrap-break-word' },
+          }"
           input-id="account_bank_app"
           option-label="label"
           option-value="value"

@@ -152,6 +152,13 @@ async function deleteAccount(account: Account) {
   await loadAccounts();
 }
 
+// An app taken off the capture list since keeps its package name, as the form shows it
+function getBankAppLabel(account: Account) {
+  if (!account.bankPackage) return null;
+
+  return bankAppLabels.value.get(account.bankPackage) ?? account.bankPackage;
+}
+
 function findAccount(accountId: number) {
   return accounts.value.find(account => account.id === accountId);
 }
@@ -226,7 +233,7 @@ function openEditAccountDialog(account: Account) {
           :key="account.id"
           :account
           :card-digits="cardDigitsByAccountId.get(account.id) ?? []"
-          :bank-app-label="account.bankPackage ? bankAppLabels.get(account.bankPackage) : null"
+          :bank-app-label="getBankAppLabel(account)"
           :balance-minor="balances.get(account.id) ?? 0"
           v-on="bindLongPress(account.id)"
           @click="openEditAccountDialog(account)"
@@ -244,7 +251,7 @@ function openEditAccountDialog(account: Account) {
             :key="account.id"
             :account
             :card-digits="cardDigitsByAccountId.get(account.id) ?? []"
-            :bank-app-label="account.bankPackage ? bankAppLabels.get(account.bankPackage) : null"
+            :bank-app-label="getBankAppLabel(account)"
             :balance-minor="balances.get(account.id) ?? 0"
             muted
             v-on="bindLongPress(account.id)"
